@@ -7,15 +7,12 @@
 //
 
 #import "ThreadSafeMutableDictionary.h"
-#import "ThreadSafeMutableArray.h"
 #import "MultiDownloadManager.h"
 #import <UIKit/UIKit.h>
 
 @interface MultiDownloadManager () <NSURLSessionTaskDelegate, NSURLSessionDownloadDelegate>
 
 @property (nonatomic) ThreadSafeMutableDictionary* downloadItems;
-@property (nonatomic) ThreadSafeMutableArray* activeDownloadItem;
-@property (nonatomic) ThreadSafeMutableArray* totalDownloadItem;
 @property (nonatomic) NSURLSession* downloadSession;
 @property (nonatomic) int currentDownloadMaximum;
 
@@ -370,7 +367,7 @@
     
     NSArray* paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
     NSString* cachesDirectory = [paths objectAtIndex:0];
-    
+    NSLog(@"%@",cachesDirectory);
     // if no directory was provided, we look by default in the base cached dir
     if ([[NSFileManager defaultManager] fileExistsAtPath:[[cachesDirectory stringByAppendingPathComponent:directoryName] stringByAppendingPathComponent:fileName]]) {
         

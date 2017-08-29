@@ -32,4 +32,10 @@
 #pragma mark - MultiDownloadItem
 - (void)multiDownloadItem:(DownloaderItem *)downloaderItem connectionTimeOutFromURL:(NSURL *)sourceURL;
 
+#pragma mark - activeNextTaskDelegate
+- (void)activeNextTaskDelegate;
+
+#pragma mark - pauseFirstTaskDelegate
+- (void)pauseFirstTaskDelegate;
+
 @end

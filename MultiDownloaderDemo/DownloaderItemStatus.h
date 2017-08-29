@@ -14,6 +14,8 @@
 #define FILE_URL5 @"http://spaceflight.nasa.gov/gallery/images/apollo/apollo17/hires/as17-134-20380.jpg"
 #define FILE_URL6 @"http://cdn.tutsplus.com/mobile/uploads/2013/12/sample.jpg"
 
+#define MAX_CURRENTDOWNLOAD  3
+
 #pragma mark - DownloaderItemStatus
 
 typedef NS_ENUM(NSUInteger, DownloaderItemStatus) {
@@ -35,4 +37,12 @@ typedef NS_ENUM(NSUInteger, DownloadButtonStatus) {
     DownloadButtonStatusDownload,
     DownloadButtonStatusPlay,
     DownloadButtonStatusPause,
+};
+
+typedef NS_ENUM(NSUInteger, ConnectionType) {
+    
+    ConnectionTypeUnknown,
+    ConnectionTypeNone,
+    ConnectionType3G,
+    ConnectionTypeWiFi
 };

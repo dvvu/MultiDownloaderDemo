@@ -14,6 +14,7 @@
 		EA14DA671F502856005C7542 /* MultiDownloaderViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = EA14DA661F502856005C7542 /* MultiDownloaderViewController.m */; };
 		EA14DA6A1F5028D2005C7542 /* ProgressTableViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = EA14DA691F5028D2005C7542 /* ProgressTableViewCell.m */; };
 		EA14DA6D1F5029E9005C7542 /* ProgressTableViewCellObject.m in Sources */ = {isa = PBXBuildFile; fileRef = EA14DA6C1F5029E9005C7542 /* ProgressTableViewCellObject.m */; };
+		EA18D5A01F556F64000EC271 /* ThreadSafeForMutableArray.m in Sources */ = {isa = PBXBuildFile; fileRef = EA18D59F1F556F64000EC271 /* ThreadSafeForMutableArray.m */; };
 		EA2699661F4EE74600CCA74B /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = EA2699651F4EE74600CCA74B /* main.m */; };
 		EA2699691F4EE74600CCA74B /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = EA2699681F4EE74600CCA74B /* AppDelegate.m */; };
 		EA26996C1F4EE74600CCA74B /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = EA26996B1F4EE74600CCA74B /* ViewController.m */; };
@@ -51,7 +52,6 @@
 		EA2699F71F4EE80D00CCA74B /* NIState.m in Sources */ = {isa = PBXBuildFile; fileRef = EA2699E11F4EE80D00CCA74B /* NIState.m */; };
 		EA2699F81F4EE80D00CCA74B /* NIViewRecycler.m in Sources */ = {isa = PBXBuildFile; fileRef = EA2699E31F4EE80D00CCA74B /* NIViewRecycler.m */; };
 		EA2699F91F4EE80D00CCA74B /* UIResponder+NimbusCore.m in Sources */ = {isa = PBXBuildFile; fileRef = EA2699E51F4EE80D00CCA74B /* UIResponder+NimbusCore.m */; };
-		EA6FA27F1F5505A400523BC6 /* ThreadSafeMutableArray.m in Sources */ = {isa = PBXBuildFile; fileRef = EA6FA27E1F5505A400523BC6 /* ThreadSafeMutableArray.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -90,6 +90,8 @@
 		EA14DA6C1F5029E9005C7542 /* ProgressTableViewCellObject.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ProgressTableViewCellObject.m; sourceTree = "<group>"; };
 		EA14DA6E1F503E08005C7542 /* DownloaderItemStatus.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DownloaderItemStatus.h; sourceTree = "<group>"; };
 		EA14DA6F1F50479F005C7542 /* MultiDownloadCellActionDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MultiDownloadCellActionDelegate.h; sourceTree = "<group>"; };
+		EA18D59E1F556F64000EC271 /* ThreadSafeForMutableArray.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ThreadSafeForMutableArray.h; sourceTree = "<group>"; };
+		EA18D59F1F556F64000EC271 /* ThreadSafeForMutableArray.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ThreadSafeForMutableArray.m; sourceTree = "<group>"; };
 		EA2699611F4EE74600CCA74B /* MultiDownloaderDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MultiDownloaderDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EA2699651F4EE74600CCA74B /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		EA2699671F4EE74600CCA74B /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
@@ -173,8 +175,6 @@
 		EA2699E31F4EE80D00CCA74B /* NIViewRecycler.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = NIViewRecycler.m; sourceTree = "<group>"; };
 		EA2699E41F4EE80D00CCA74B /* UIResponder+NimbusCore.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "UIResponder+NimbusCore.h"; sourceTree = "<group>"; };
 		EA2699E51F4EE80D00CCA74B /* UIResponder+NimbusCore.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "UIResponder+NimbusCore.m"; sourceTree = "<group>"; };
-		EA6FA27D1F5505A400523BC6 /* ThreadSafeMutableArray.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ThreadSafeMutableArray.h; sourceTree = "<group>"; };
-		EA6FA27E1F5505A400523BC6 /* ThreadSafeMutableArray.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ThreadSafeMutableArray.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -417,8 +417,8 @@
 			children = (
 				EA14DA621F4FD6B2005C7542 /* ThreadSafeMutableDictionary.h */,
 				EA14DA631F4FD6B2005C7542 /* ThreadSafeMutableDictionary.m */,
-				EA6FA27D1F5505A400523BC6 /* ThreadSafeMutableArray.h */,
-				EA6FA27E1F5505A400523BC6 /* ThreadSafeMutableArray.m */,
+				EA18D59E1F556F64000EC271 /* ThreadSafeForMutableArray.h */,
+				EA18D59F1F556F64000EC271 /* ThreadSafeForMutableArray.m */,
 			);
 			name = ThreadSafeDownloader;
 			sourceTree = "<group>";
@@ -626,9 +626,9 @@
 				EA2699E91F4EE80D00CCA74B /* NIDebuggingTools.m in Sources */,
 				EA14DA6D1F5029E9005C7542 /* ProgressTableViewCellObject.m in Sources */,
 				EA2699E71F4EE80D00CCA74B /* NIButtonUtilities.m in Sources */,
+				EA18D5A01F556F64000EC271 /* ThreadSafeForMutableArray.m in Sources */,
 				EA2699F21F4EE80D00CCA74B /* NIOperations.m in Sources */,
 				EA2699F91F4EE80D00CCA74B /* UIResponder+NimbusCore.m in Sources */,
-				EA6FA27F1F5505A400523BC6 /* ThreadSafeMutableArray.m in Sources */,
 				EA2699E81F4EE80D00CCA74B /* NICommonMetrics.m in Sources */,
 				EA2699EF1F4EE80D00CCA74B /* NINetworkActivity.m in Sources */,
 				EA2699B41F4EE7E400CCA74B /* NIMutableTableViewModel.m in Sources */,

@@ -26,6 +26,4 @@
 @property (nonatomic) UILabel* taskLinkLabel;
 @property (nonatomic) NSURL* link;
 
-- (void)updateProgress:(CGFloat)progress withInfo:(NSString *)detail;
-- (void)statusDownloader:(DownloaderItemStatus)status;
 @end
