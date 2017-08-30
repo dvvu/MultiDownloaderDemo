@@ -43,6 +43,7 @@
     _progressView.progress = cellObject.process;
     _taskDetailLabel.text = cellObject.taskDetail;
     _taskLinkLabel.text = [cellObject.taskUrl absoluteString];
+    _identifier = cellObject.identifier;
     [self statusDownloader: cellObject.taskStatus];
     
     return YES;
@@ -51,7 +52,7 @@
 - (void)setModel:(id<ProgressTableViewCellObjectProtocol>)model {
   
     _model = model;
-    
+    _identifier = _model.identifier;
     [self updateProgress:_model.process withInfo:_model.taskDetail];
 }
 
@@ -240,23 +241,20 @@
     
     if(_downloadButtonStatus == DownloadButtonStatusPause) {
         
-        if (_delegate && [_delegate respondsToSelector:@selector(pauseDownloadFromURL:)]) {
+        if (_delegate && [_delegate respondsToSelector:@selector(pauseDownloadWithItemID:)]) {
             
-            [_downloadButton setImage:[UIImage imageNamed:@"ic_play"] forState:UIControlStateNormal];
-            [_delegate pauseDownloadFromURL:_link];
+            [_delegate pauseDownloadWithItemID:_identifier];
         }
     } else if (_downloadButtonStatus == DownloadButtonStatusPlay) {
         
-        if (_delegate && [_delegate respondsToSelector:@selector(resumeDownloadFromURL:)]) {
+        if (_delegate && [_delegate respondsToSelector:@selector(resumeDownloadWithItemID:)]) {
             
-            [_downloadButton setImage:[UIImage imageNamed:@"ic_pause"] forState:UIControlStateNormal];
-            [_delegate resumeDownloadFromURL:_link];
+            [_delegate resumeDownloadWithItemID:_identifier];
         }
     } else {
         
         if (_delegate && [_delegate respondsToSelector:@selector(startDownloadFromURL:)]) {
             
-            [_downloadButton setImage:[UIImage imageNamed:@"ic_pause"] forState:UIControlStateNormal];
             [_delegate startDownloadFromURL:_link];
         }
     }
@@ -268,7 +266,7 @@
     
     if (_delegate && [_delegate respondsToSelector:@selector(startDownloadFromURL:)]) {
         
-        [_delegate cancelDownloadFromURL:_link];
+        [_delegate cancelDownloadWithItemID:_identifier];
     }
 }
 

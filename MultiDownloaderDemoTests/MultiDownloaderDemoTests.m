@@ -7,6 +7,7 @@
 //
 
 #import <XCTest/XCTest.h>
+#import "MultiDownloadManager.h"
 
 @interface MultiDownloaderDemoTests : XCTestCase
 
@@ -25,8 +26,15 @@
 }
 
 - (void)testExample {
-    // This is an example of a functional test case.
-    // Use XCTAssert and related functions to verify your tests produce the correct results.
+    
+    MultiDownloadManager* downloadTasks = [[MultiDownloadManager sharedManager] initBackgroundDownloadWithId:@"com.vn.vng.zalo.download" currentDownloadMaximum:1 delegate:self delegateQueue:[NSOperationQueue mainQueue]];
+    
+    NSURL* url = [NSURL URLWithString:@"http://spaceflight.nasa.gov/gallery/images/apollo/apollo17/hires/s72-55482.jpg"];
+    
+    for(int i = 0; i < 100; i++) {
+        
+        [downloadTasks startDownloadFromURL:url];
+    }
 }
 
 - (void)testPerformanceExample {

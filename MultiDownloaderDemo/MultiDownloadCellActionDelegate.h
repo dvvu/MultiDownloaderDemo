@@ -10,17 +10,17 @@
 
 @protocol MultiDownloadCellActionDelegate <NSObject>
 
-#pragma mark - startDownloadFromURL
+#pragma mark - cancelDownloadWithItemID
 - (void)startDownloadFromURL:(NSURL *)sourceURL;
 
-#pragma mark - pauseDownloadFromURL
-- (void)pauseDownloadFromURL:(NSURL *)sourceURL;
+#pragma mark - cancelDownloadWithItemID
+- (void)pauseDownloadWithItemID:(NSString *)identifier;
 
-#pragma mark - resumeDownloadFromURL
-- (void)resumeDownloadFromURL:(NSURL *)sourceURL;
+#pragma mark - cancelDownloadWithItemID
+- (void)resumeDownloadWithItemID:(NSString *)identifier;
 
-#pragma mark - cancelDownloadFromURL
-- (void)cancelDownloadFromURL:(NSURL *)sourceURL;
+#pragma mark - cancelDownloadWithItemID
+- (void)cancelDownloadWithItemID:(NSString *)identifier;
 
 @end
 

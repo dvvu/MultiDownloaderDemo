@@ -18,24 +18,13 @@
 @protocol MultiDownloadItemDelegate <NSObject>
 
 #pragma mark - MultiDownloadItem
-- (void)multiDownloadItem:(NSURL *)sourceUrl downloadStatus:(DownloaderItemStatus)status;
+- (void)multiDownloadItem:(DownloaderItem *)downloaderItem downloadStatus:(DownloaderItemStatus)status;
 
 #pragma mark - MultiDownloadItem
-- (void)multiDownloadItem:(DownloaderItem *)downloaderItem with:(NSURL *)sourceUrl didWriteData:(int64_t)bytesWritten totalBytesWritten:(int64_t)totalBytesWritten totalBytesExpectedToWrite:(int64_t)totalBytesExpectedToWrite;
+- (void)multiDownloadItem:(DownloaderItem *)downloaderItem didWriteData:(int64_t)bytesWritten totalBytesWritten:(int64_t)totalBytesWritten totalBytesExpectedToWrite:(int64_t)totalBytesExpectedToWrite;
 
 #pragma mark - MultiDownloadItem
-- (void)multiDownloadItem:(DownloaderItem *)downloaderItem didFinishDownloadFromURL:(NSURL *)sourceUrl toURL:(NSURL *)destUrl withError:(NSError *)error;
+- (void)multiDownloadItem:(DownloaderItem *)downloaderItem didFinishDownloadFromURL:(NSURL *)destUrl withError:(NSError *)error;
 
-#pragma mark - MultiDownloadItem
-- (void)multiDownloadItem:(DownloaderItem *)downloaderItem internetDisconnectFromURL:(NSURL *)sourceURL;
-
-#pragma mark - MultiDownloadItem
-- (void)multiDownloadItem:(DownloaderItem *)downloaderItem connectionTimeOutFromURL:(NSURL *)sourceURL;
-
-#pragma mark - activeNextTaskDelegate
-- (void)activeNextTaskDelegate;
-
-#pragma mark - pauseFirstTaskDelegate
-- (void)pauseFirstTaskDelegate;
 
 @end

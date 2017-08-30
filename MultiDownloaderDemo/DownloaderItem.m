@@ -31,6 +31,7 @@
         _directoryName = @"";
         _fileName = @"";
         _sourceURL = sourceURL;
+        _identifier = [NSString stringWithFormat:@"%lud",(unsigned long)downloadTask.taskIdentifier];
     }
     
     return self;

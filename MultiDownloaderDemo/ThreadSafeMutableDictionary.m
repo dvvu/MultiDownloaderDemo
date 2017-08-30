@@ -10,8 +10,8 @@
 
 @interface ThreadSafeMutableDictionary()
 
-@property (nonatomic) NSMutableDictionary* internalDictionary;
-@property (nonatomic) dispatch_queue_t tsQueue;
+@property (nonatomic) NSMutableDictionary* threadSafeDictionary;
+@property (nonatomic) dispatch_queue_t threadSafeDictionaryQueue;
 
 @end
 
@@ -21,8 +21,8 @@
     
     self = [super init];
     
-    _internalDictionary = [[NSMutableDictionary alloc]init];
-    _tsQueue = dispatch_queue_create("com.vn.vng.zalo.ThreadSafeMutableDictionary", NULL);
+    _threadSafeDictionary = [[NSMutableDictionary alloc]init];
+    _threadSafeDictionaryQueue = dispatch_queue_create("threadSafeDictionar_Queue", NULL);
     
     return self;
 }
@@ -31,9 +31,9 @@
     
     NSObject* __block result;
     
-    dispatch_sync(_tsQueue, ^{
+    dispatch_sync(_threadSafeDictionaryQueue, ^{
         
-        result = _internalDictionary[key];
+        result = _threadSafeDictionary[key];
     });
     
     return result;
@@ -41,9 +41,9 @@
 
 - (void)setObject:(id)obj forKeyedSubscript:(id<NSCopying>)key {
     
-    dispatch_async(_tsQueue, ^{
+    dispatch_async(_threadSafeDictionaryQueue, ^{
         
-        _internalDictionary[key] = obj;
+        _threadSafeDictionary[key] = obj;
     });
 }
 
@@ -51,9 +51,9 @@
     
     NSDictionary* __block result;
     
-    dispatch_sync(_tsQueue, ^{
+    dispatch_sync(_threadSafeDictionaryQueue, ^{
         
-        result = _internalDictionary;
+        result = _threadSafeDictionary;
     });
     
     return result;
@@ -61,17 +61,17 @@
 
 - (void)removeObjectForkey:(NSString *)key {
     
-    dispatch_async(_tsQueue, ^{
+    dispatch_async(_threadSafeDictionaryQueue, ^{
         
-        [_internalDictionary removeObjectForKey:key];
+        [_threadSafeDictionary removeObjectForKey:key];
     });
 }
 
 - (void)removeAllObjects {
     
-    dispatch_async(_tsQueue, ^{
+    dispatch_async(_threadSafeDictionaryQueue, ^{
         
-        [_internalDictionary removeAllObjects];
+        [_threadSafeDictionary removeAllObjects];
     });
 }
 
@@ -79,9 +79,9 @@
     
     NSArray* __block keys;
     
-    dispatch_sync(_tsQueue, ^{
+    dispatch_sync(_threadSafeDictionaryQueue, ^{
         
-        keys = [_internalDictionary allKeys];
+        keys = [_threadSafeDictionary allKeys];
     });
     
     return keys;
@@ -91,12 +91,25 @@
     
     NSArray* __block values;
     
-    dispatch_sync(_tsQueue, ^{
+    dispatch_sync(_threadSafeDictionaryQueue, ^{
         
-        values = [_internalDictionary allValues];
+        values = [_threadSafeDictionary allValues];
     });
     
     return values;
+}
+
+#pragma mark - count
+
+- (NSUInteger)count {
+    
+    NSUInteger __block count;
+    
+    dispatch_sync(_threadSafeDictionaryQueue, ^{
+        
+        count = [_threadSafeDictionary count];
+    });
+    return count;
 }
 
 @end

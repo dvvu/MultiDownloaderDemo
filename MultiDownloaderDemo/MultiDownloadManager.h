@@ -46,15 +46,15 @@
 - (NSString *)localPathForFile:(NSURL *)sourceURL;
 
 #pragma mark - startDownloadFromURL
-- (void)startDownloadFromURL:(NSURL *)sourceURL;
+- (NSString *)startDownloadFromURL:(NSURL *)sourceURL;
 
 #pragma mark - pauseDownloadFromURL
-- (void)pauseDownloadFromURL:(NSURL *)sourceURL;
+- (void)pauseDownloadFromURL:(NSString *)identifier;
 
 #pragma mark - resumeDownloadFromURL
-- (void)resumeDownloadFromURL:(NSURL *)sourceURL;
+- (void)resumeDownloadFromURL:(NSString *)identifier;
 
 #pragma mark - cancelDownloadFromURL
-- (void)cancelDownloadFromURL:(NSURL *)sourceURL;
+- (void)cancelDownloadFromURL:(NSString *)identifier;
 
 @end

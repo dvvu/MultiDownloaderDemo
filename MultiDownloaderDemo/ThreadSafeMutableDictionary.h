@@ -18,5 +18,6 @@
 - (void)removeAllObjects;
 - (NSArray *)allKeys;
 - (NSArray *)allValues;
-
+#pragma mark - count
+- (NSUInteger)count;
 @end

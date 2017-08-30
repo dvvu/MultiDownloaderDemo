@@ -47,4 +47,7 @@
 #pragma mark - url
 @property (nonatomic) NSURL* sourceURL;
 
+#pragma mark - identifier
+@property (nonatomic) NSString* identifier;
+
 @end

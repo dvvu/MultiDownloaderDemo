@@ -16,6 +16,7 @@
 
 @property (nonatomic) id<MultiDownloadCellActionDelegate> delegate;
 @property (nonatomic) DownloaderItemStatus taskStatus;
+@property (readonly, nonatomic, copy) NSString* identifier;
 @property (readonly, nonatomic, copy) NSString* taskDetail;
 @property (readonly, nonatomic, copy) NSString* taskName;
 @property (readonly, nonatomic, copy) NSURL* taskUrl;
@@ -27,6 +28,7 @@
 
 @property (nonatomic) id<MultiDownloadCellActionDelegate> delegate;
 @property (nonatomic) DownloaderItemStatus taskStatus;
+@property (nonatomic, copy) NSString* identifier;
 @property (nonatomic, copy) NSString* taskDetail;
 @property (nonatomic, copy) NSString* taskName;
 @property (nonatomic, copy) NSURL* taskUrl;

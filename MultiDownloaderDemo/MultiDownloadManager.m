@@ -7,12 +7,15 @@
 //
 
 #import "ThreadSafeMutableDictionary.h"
+#import "ThreadSafeForMutableArray.h"
 #import "MultiDownloadManager.h"
 #import <UIKit/UIKit.h>
 
 @interface MultiDownloadManager () <NSURLSessionTaskDelegate, NSURLSessionDownloadDelegate>
 
+@property (nonatomic) ThreadSafeForMutableArray* pendingDownloadItems;
 @property (nonatomic) ThreadSafeMutableDictionary* downloadItems;
+@property (nonatomic) dispatch_queue_t downloadItemManageQueue;
 @property (nonatomic) NSURLSession* downloadSession;
 @property (nonatomic) int currentDownloadMaximum;
 
@@ -73,35 +76,26 @@
 - (void)setupDownloadTask {
     
     _downloadItems = [[ThreadSafeMutableDictionary alloc] init];
+    _downloadItemManageQueue = dispatch_queue_create("DOWNLOAD_MANAGER_QUEUE", DISPATCH_QUEUE_SERIAL);
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(terminalApp) name:UIApplicationWillTerminateNotification object:nil];
+    
+    // Get old tasks and cancel
+    dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
     
     [_downloadSession getTasksWithCompletionHandler:^(NSArray* tasks, NSArray* uploadTasks, NSArray* downloadTasks) {
         
         for (NSURLSessionDownloadTask* downloadTask in downloadTasks) {
-    
-           NSURL* sourceURL = [[downloadTask originalRequest] URL];
-          
-            if (sourceURL) {
-                
-                DownloaderItem* downloaderItem = _downloadItems[sourceURL];
-                
-                if (!downloaderItem) {
-                    
-                    downloaderItem = [[DownloaderItem alloc] initWithActiveDownloadTask:downloadTask with:sourceURL session:_downloadSession];
-                    downloaderItem.startDate = [NSDate date];
-                    downloaderItem.fileName = [sourceURL lastPathComponent];
-                }
-                
-                [downloadTask resume];
-                [_downloadItems setObject:downloaderItem forKeyedSubscript:sourceURL];
-            } else {
-                
-                [downloadTask cancel];
-            }
+            
+            [downloadTask cancel];
         }
+        dispatch_semaphore_signal(semaphore);
     }];
+    
+    dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
 }
+
+#pragma mark - terminalApp
 
 - (void)terminalApp {
     
@@ -112,11 +106,12 @@
 
 - (void)URLSession:(NSURLSession *)session downloadTask:(NSURLSessionDownloadTask *)downloadTask didFinishDownloadingToURL:(NSURL *)location {
     
-    NSURL* sourceURL = [[downloadTask originalRequest] URL];
+//    NSURL* sourceURL = [[downloadTask originalRequest] URL];
+    NSString* identifier = [NSString stringWithFormat:@"%lud",(unsigned long)[downloadTask taskIdentifier]];
     
-    if (sourceURL) {
+    if (identifier) {
         
-        DownloaderItem* downloaderItem = _downloadItems[sourceURL];
+        DownloaderItem* downloaderItem = _downloadItems[identifier];
         
         if (downloaderItem) {
             
@@ -156,15 +151,18 @@
                     NSLog(@"Move item at URL ERROR: %@", error);
                 } else {
                     
-                    if (_delegate && [_delegate respondsToSelector:@selector(multiDownloadItem:didFinishDownloadFromURL:toURL:withError:)]) {
+                    if (_delegate && [_delegate respondsToSelector:@selector(multiDownloadItem:didFinishDownloadFromURL:withError:)]) {
                         downloaderItem.downloadItemStatus = DownloadItemStatusCompleted;
-                        [_delegate multiDownloadItem:downloaderItem didFinishDownloadFromURL:sourceURL toURL:location withError:nil];
+                        [_delegate multiDownloadItem:downloaderItem didFinishDownloadFromURL:location withError:nil];
                     }
                 }
             }
         }
         
-        [_downloadItems removeObjectForkey:sourceURL];
+        dispatch_async(_downloadItemManageQueue, ^{
+            
+            [_downloadItems removeObjectForkey:identifier];
+        });
     }
 }
 
@@ -172,31 +170,31 @@
 
 - (void)URLSession:(NSURLSession *)session downloadTask:(NSURLSessionDownloadTask *)downloadTask didWriteData:(int64_t)bytesWritten totalBytesWritten:(int64_t)totalBytesWritten totalBytesExpectedToWrite:(int64_t)totalBytesExpectedToWrite {
     
-    NSURL* sourceURL = [[downloadTask originalRequest] URL];
+    NSString* identifier = [NSString stringWithFormat:@"%lud",(unsigned long)[downloadTask taskIdentifier]];
     
-    if (_delegate && [_delegate respondsToSelector:@selector(multiDownloadItem:with:didWriteData:totalBytesWritten:totalBytesExpectedToWrite:)]) {
+    if (_delegate && [_delegate respondsToSelector:@selector(multiDownloadItem:didWriteData:totalBytesWritten:totalBytesExpectedToWrite:)]) {
         
-        DownloaderItem* downloaderItem = _downloadItems[sourceURL];
+        DownloaderItem* downloaderItem = _downloadItems[identifier];
         
         if (downloaderItem.downloadItemStatus == DownloadItemStatusNotStarted) {
             
             downloaderItem.downloadItemStatus = DownloadItemStatusStarted;
         }
         
-        [_delegate multiDownloadItem:downloaderItem with:sourceURL didWriteData:bytesWritten totalBytesWritten:totalBytesWritten totalBytesExpectedToWrite:totalBytesExpectedToWrite];
+        [_delegate multiDownloadItem:downloaderItem didWriteData:bytesWritten totalBytesWritten:totalBytesWritten totalBytesExpectedToWrite:totalBytesExpectedToWrite];
     }
 }
 
 #pragma mark - NSURLSessionTaskDelegate
 
-- (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)task didCompleteWithError:(NSError *)error {
+- (void)URLSession:(NSURLSession *)session task:(NSURLSessionTask *)downloadTask didCompleteWithError:(NSError *)error {
     
     if (!error) {
         
         return;
     }
     
-    NSURL* sourceURL = [[task originalRequest] URL];
+    NSString* identifier = [NSString stringWithFormat:@"%lud",(unsigned long)[downloadTask taskIdentifier]];
     
     switch ([error code]) {
             
@@ -211,38 +209,48 @@
         case NSURLErrorNotConnectedToInternet:
             
             // Cannot connect to the internet
-            
-            if (_delegate && [_delegate respondsToSelector:@selector(multiDownloadItem:internetDisconnectFromURL:)]) {
-                
-                DownloaderItem* downloaderItem = _downloadItems[sourceURL];
-                downloaderItem.downloadItemStatus = DownloadItemStatusInterrupted;
-                [_delegate multiDownloadItem:downloaderItem internetDisconnectFromURL:sourceURL];
-            }
             break;
         case NSURLErrorTimedOut:
             
             // Time out connection
-            if (_delegate && [_delegate respondsToSelector:@selector(multiDownloadItem:connectionTimeOutFromURL:)]) {
-                
-                DownloaderItem* downloaderItem = _downloadItems[sourceURL];
-                downloaderItem.downloadItemStatus = DownloadItemStatusInterrupted;
-                [_delegate multiDownloadItem:downloaderItem connectionTimeOutFromURL:sourceURL];
-            }
             break;
         default:
             break;
     }
     
-    if (_delegate && [_delegate respondsToSelector:@selector(multiDownloadItem:didFinishDownloadFromURL:toURL:withError:)]) {
+    if (_delegate && [_delegate respondsToSelector:@selector(multiDownloadItem:didFinishDownloadFromURL:withError:)]) {
         
-        DownloaderItem* downloaderItem = _downloadItems[sourceURL];
-        [_delegate multiDownloadItem:downloaderItem didFinishDownloadFromURL:sourceURL toURL:nil withError:error];
+        DownloaderItem* downloaderItem = _downloadItems[identifier];
+        [_delegate multiDownloadItem:downloaderItem didFinishDownloadFromURL:nil withError:error];
     }
     
-    if (sourceURL) {
+    if (identifier) {
         
-        [_downloadItems removeObjectForkey:sourceURL];
+        dispatch_async(_downloadItemManageQueue, ^{
+            
+            [_downloadItems removeObjectForkey:identifier];
+        });
     }
+}
+
+#pragma mark - getIdForActiveDownloadURL...
+
+- (NSInteger)getIdForActiveDownloadURL:(NSURL *)sourceURL {
+    
+    NSInteger aFoundDownloadID = -1;
+    NSArray* aDownloadKeysArray = [_downloadItems allKeys];
+    
+    for (NSNumber* aDownloadID in aDownloadKeysArray) {
+        
+        DownloaderItem* aDownloadItem = [_downloadItems objectForKeyedSubscript:aDownloadID];
+        
+        if ([aDownloadItem.sourceURL isEqual:sourceURL]) {
+            
+            aFoundDownloadID = [aDownloadID unsignedIntegerValue];
+            break;
+        }
+    }
+    return aFoundDownloadID;
 }
 
 #pragma mark - cachesDirectoryUrlPath
@@ -258,59 +266,65 @@
 
 #pragma mark - startDownloadFromURL
 
-- (void)startDownloadFromURL:(NSURL *)sourceURL {
+- (NSString *)startDownloadFromURL:(NSURL *)sourceURL {
     
     [self createDownloadTempDirectory];
-    // check condition.
-    if (![self fileExistsForUrl:sourceURL]) {
+   
+    if (_downloadItems.count > _currentDownloadMaximum) {
         
-        DownloaderItem* downloaderItem = _downloadItems[sourceURL];
-        if (!downloaderItem) {
-            
-            NSURLRequest* request = [NSURLRequest requestWithURL:sourceURL cachePolicy:NSURLRequestReloadIgnoringCacheData timeoutInterval:10.0];
-            NSURLSessionDownloadTask* downloadTask = [_downloadSession downloadTaskWithRequest:request];
-            downloaderItem = [[DownloaderItem alloc] initWithActiveDownloadTask:downloadTask with:sourceURL session:_downloadSession];
-            downloaderItem.startDate = [NSDate date];
-            downloaderItem.fileName = [sourceURL lastPathComponent];
-        }
         
-        downloaderItem.downloadItemStatus = DownloadItemStatusStarted;
-        [downloaderItem.downloadTask resume];
-        [_downloadItems setObject:downloaderItem forKeyedSubscript:sourceURL];
     } else {
-     
-        [_delegate multiDownloadItem:sourceURL downloadStatus:DownloadItemStatusExisted];
+        
+        
     }
+    
+    NSURLRequest* request = [NSURLRequest requestWithURL:sourceURL cachePolicy:NSURLRequestReloadIgnoringCacheData timeoutInterval:10.0];
+    NSURLSessionDownloadTask* downloadTask = [_downloadSession downloadTaskWithRequest:request];
+    DownloaderItem* downloaderItem = [[DownloaderItem alloc] initWithActiveDownloadTask:downloadTask with:sourceURL session:_downloadSession];
+    
+    downloaderItem = [[DownloaderItem alloc] initWithActiveDownloadTask:downloadTask with:sourceURL session:_downloadSession];
+    downloaderItem.startDate = [NSDate date];
+    downloaderItem.sourceURL = sourceURL;
+    downloaderItem.fileName = [sourceURL lastPathComponent];
+    downloaderItem.downloadItemStatus = DownloadItemStatusStarted;
+    [downloaderItem.downloadTask resume];
+    
+    dispatch_async(_downloadItemManageQueue, ^{
+        
+        [_downloadItems setObject:downloaderItem forKeyedSubscript:downloaderItem.identifier];
+    });
+    
+    return downloaderItem.identifier;
 }
 
 #pragma mark - pauseDownloadFromURL
 
-- (void)pauseDownloadFromURL:(NSURL *)sourceURL {
+- (void)pauseDownloadFromURL:(NSString *)identifier {
     
-    DownloaderItem* downloaderItem = _downloadItems[sourceURL];
+    DownloaderItem* downloaderItem = _downloadItems[identifier];
     downloaderItem.downloadItemStatus = DownloadItemStatusPaused;
     [downloaderItem.downloadTask suspend];
-    [_delegate multiDownloadItem:sourceURL downloadStatus:DownloadItemStatusPaused];
+    [_delegate multiDownloadItem:downloaderItem downloadStatus:DownloadItemStatusPaused];
 }
 
 #pragma mark - resumeDownloadFromURL
 
-- (void)resumeDownloadFromURL:(NSURL *)sourceURL {
+- (void)resumeDownloadFromURL:(NSString *)identifier {
     
-    DownloaderItem* downloaderItem = _downloadItems[sourceURL];
+    DownloaderItem* downloaderItem = _downloadItems[identifier];
     downloaderItem.downloadItemStatus = DownloadItemStatusStarted;
     [downloaderItem.downloadTask resume];
-    [_delegate multiDownloadItem:sourceURL downloadStatus:DownloadItemStatusStarted];
+    [_delegate multiDownloadItem:downloaderItem downloadStatus:DownloadItemStatusStarted];
 }
 
 #pragma mark - cancelDownloadFromURL
 
-- (void)cancelDownloadFromURL:(NSURL *)sourceURL {
+- (void)cancelDownloadFromURL:(NSString *)identifier {
     
-    DownloaderItem* downloaderItem = _downloadItems[sourceURL];
+    DownloaderItem* downloaderItem = _downloadItems[identifier];
     downloaderItem.downloadItemStatus = DownloadItemStatusCancelled;
     [downloaderItem.downloadTask cancel];
-    [_delegate multiDownloadItem:sourceURL downloadStatus:DownloadItemStatusCancelled];
+    [_delegate multiDownloadItem:downloaderItem downloadStatus:DownloadItemStatusCancelled];
 }
 
 #pragma mark - activeDownloaders
@@ -327,7 +341,7 @@
     // Get Caches directory
     NSArray* cacheDirectory = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSAllDomainsMask, YES);
     NSString* path = [cacheDirectory firstObject];
-    path = [path stringByAppendingPathComponent:[NSString stringWithFormat:@"com.apple.nsurlsessiond/Downloads/Item/%@",[[NSBundle mainBundle] bundleIdentifier]]];
+    path = [path stringByAppendingPathComponent:[NSString stringWithFormat:@"com.apple.nsurlsessiond/Downloads/%@",[[NSBundle mainBundle] bundleIdentifier]]];
     
     // Create new directory if not existed
     if (![[NSFileManager defaultManager] fileExistsAtPath:path]) {
@@ -368,6 +382,7 @@
     NSArray* paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
     NSString* cachesDirectory = [paths objectAtIndex:0];
     NSLog(@"%@",cachesDirectory);
+    
     // if no directory was provided, we look by default in the base cached dir
     if ([[NSFileManager defaultManager] fileExistsAtPath:[[cachesDirectory stringByAppendingPathComponent:directoryName] stringByAppendingPathComponent:fileName]]) {
         

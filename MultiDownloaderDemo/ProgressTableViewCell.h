@@ -24,6 +24,7 @@
 @property (nonatomic) UIButton* cancelButton;
 @property (nonatomic) UILabel* taskNameLabel;
 @property (nonatomic) UILabel* taskLinkLabel;
+@property (nonatomic) NSString* identifier;
 @property (nonatomic) NSURL* link;
 
 @end
