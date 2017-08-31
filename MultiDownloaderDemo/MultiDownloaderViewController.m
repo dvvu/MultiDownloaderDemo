@@ -19,16 +19,17 @@
 
 @interface MultiDownloaderViewController () <MultiDownloadItemDelegate, NITableViewModelDelegate, MultiDownloadCellActionDelegate, UITableViewDelegate>
 
+@property (weak, nonatomic) IBOutlet UIBarButtonItem* connectionStatusButton;
 @property (nonatomic) dispatch_queue_t multiDownloadItemsQueue;
 @property (nonatomic) ThreadSafeForMutableArray* canDownLinks;
 @property (nonatomic) MultiDownloadManager* downloadTasks;
 @property (nonatomic) NSMutableArray* validDownloadLinks;
 @property (nonatomic) int maxCurrentDownloadTasks;
 @property (nonatomic) NSDictionary* cellObjects;
+@property (nonatomic) BOOL isEnableMaxDownload;
 @property (nonatomic) NITableViewModel* model;
 @property (nonatomic) UITableView* tableView;
 @property (nonatomic) NSArray* downloadLinks;
-@property (nonatomic) BOOL isEnableMaxDownload;
 
 @end
 
@@ -40,7 +41,9 @@
     
     _tableView = [[UITableView alloc]init];
     _tableView.delegate = self;
+    _tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     _multiDownloadItemsQueue = dispatch_queue_create("MULTIDOWNLOADITEMS_QUEUE", DISPATCH_QUEUE_SERIAL);
+    [_tableView setBackgroundColor:[UIColor lightGrayColor]];
     [self checkConnectionNetWork];
     [self.view addSubview:_tableView];
 
@@ -75,13 +78,17 @@
     
     if (!isNetworkReachable) {
       
+        [_connectionStatusButton setTitle:@"DISCONNECT"];
         return ConnectionTypeNone;
     } else if ((flags & kSCNetworkReachabilityFlagsIsWWAN) != 0) {
         
-        _maxCurrentDownloadTasks = 2;
+        _maxCurrentDownloadTasks = 1;
+        [_connectionStatusButton setTitle:@"3G"];
         return ConnectionType3G;
     } else {
-        _maxCurrentDownloadTasks = 3;
+        
+        _maxCurrentDownloadTasks = 2;
+        [_connectionStatusButton setTitle:@"WIFI"];
         return ConnectionTypeWiFi;
     }
 }
@@ -92,7 +99,7 @@
     
     dispatch_async(_multiDownloadItemsQueue, ^ {
         
-        _downloadLinks = @[FILE_URL,FILE_URL1,FILE_URL2,FILE_URL3,FILE_URL4,FILE_URL5,FILE_URL6];
+        _downloadLinks = @[FILE_URL,FILE_URL1,FILE_URL2,FILE_URL3,FILE_URL4,FILE_URL5,FILE_URL6,FILE_URL6,FILE_URL6,FILE_URL6,FILE_URL6,FILE_URL6,FILE_URL6,FILE_URL6,FILE_URL6,FILE_URL6,FILE_URL6];
         _canDownLinks = [[ThreadSafeForMutableArray alloc] init];
         _validDownloadLinks = [NSMutableArray array];
         _downloadTasks = [[MultiDownloadManager sharedManager] initBackgroundDownloadWithId:@"com.vn.vng.zalo.download" currentDownloadMaximum:_maxCurrentDownloadTasks delegate:self delegateQueue:[NSOperationQueue mainQueue]];
@@ -157,7 +164,17 @@
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
     
-    return 100;
+    return 140;
+}
+
+#pragma mark - tableViewDelegate
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
+    
+    [UIView animateWithDuration:0.05 animations: ^ {
+        
+        [tableView deselectRowAtIndexPath:indexPath animated:YES];
+    }];
 }
 
 #pragma mark - startDownloadFromURL
@@ -166,31 +183,35 @@
     
     ProgressTableViewCellObject* cellObject = _cellObjects[sourceURL];
     cellObject.identifier = [_downloadTasks startDownloadFromURL:sourceURL];
-    cellObject.taskStatus = DownloadItemStatusStarted;
+    cellObject.taskStatus = DownloadItemStatusPending;
     NSIndexPath* indexPath = [_model indexPathForObject:cellObject];
     ProgressTableViewCell* cell = [_tableView cellForRowAtIndexPath:indexPath];
-    [cell setModel:cellObject];
+    
+    dispatch_async(dispatch_get_main_queue(), ^ {
+        
+        [cell setModel:cellObject];
+    });
 }
 
 #pragma mark - pauseDownloadWithItemID
 
 - (void)pauseDownloadWithItemID:(NSString *)identifier {
     
-    [_downloadTasks pauseDownloadFromURL:identifier];
+    [_downloadTasks pauseDownloadWithItemID:identifier];
 }
 
 #pragma mark - resumeDownloadWithItemID
 
 - (void)resumeDownloadWithItemID:(NSString *)identifier {
     
-    [_downloadTasks resumeDownloadFromURL:identifier];
+    [_downloadTasks resumeDownloadWithItemID:identifier];
 }
 
 #pragma mark - cancelDownloadWithItemID
 
 - (void)cancelDownloadWithItemID:(NSString *)identifier {
     
-    [_downloadTasks cancelDownloadFromURL:identifier];
+    [_downloadTasks cancelDownloadWithItemID:identifier];
 }
 
 #pragma mark - MultiDownloadItem
@@ -211,7 +232,10 @@
     cellObject.process = progress;
     cellObject.taskStatus = downloaderItem.downloadItemStatus;
     cellObject.taskDetail = detailInfo;
-    [cell setModel:cellObject];
+    dispatch_async(dispatch_get_main_queue(), ^ {
+        
+        [cell setModel:cellObject];
+    });
 }
 
 #pragma mark - MultiDownloadItem
@@ -222,19 +246,15 @@
     NSIndexPath* indexPath = [_model indexPathForObject:cellObject];
     ProgressTableViewCell* cell = [_tableView cellForRowAtIndexPath:indexPath];
     
-    if (downloaderItem.downloadItemStatus == DownloadItemStatusCancelled) {
-        
-        cellObject.process = 0.0;
-        cellObject.taskStatus = DownloadItemStatusCancelled;
-        cellObject.taskDetail = @"";
-        [cell setModel:cellObject];
-        
-    } else if (downloaderItem.downloadItemStatus == DownloadItemStatusCompleted) {
+    if (downloaderItem.downloadItemStatus == DownloadItemStatusCompleted) {
         
         cellObject.process = 0.0;
         cellObject.taskDetail = @"";
         cellObject.taskStatus = DownloadItemStatusCompleted;
-        [cell setModel:cellObject];
+        dispatch_async(dispatch_get_main_queue(), ^ {
+            
+            [cell setModel:cellObject];
+        });
     }
 }
 
@@ -242,16 +262,43 @@
 
 - (void)multiDownloadItem:(DownloaderItem *)downloaderItem downloadStatus:(DownloaderItemStatus)status {
     
-    if(status == DownloadItemStatusPaused) {
-        
-        ProgressTableViewCellObject* cellObject = _cellObjects[downloaderItem.sourceURL];
-        NSIndexPath* indexPath = [_model indexPathForObject:cellObject];
-        ProgressTableViewCell* cell = [_tableView cellForRowAtIndexPath:indexPath];
+    ProgressTableViewCellObject* cellObject = _cellObjects[downloaderItem.sourceURL];
+    NSIndexPath* indexPath = [_model indexPathForObject:cellObject];
+    ProgressTableViewCell* cell = [_tableView cellForRowAtIndexPath:indexPath];
+    
+    if (status == DownloadItemStatusPaused) {
+
         cellObject.taskStatus = DownloadItemStatusPaused;
-        [cell setModel:cellObject];
+        dispatch_async(dispatch_get_main_queue(), ^ {
+            
+            [cell setModel:cellObject];
+        });
     } else if (status == DownloadItemStatusExisted) {
         
         NSLog(@"File is Downloaded");
+    } else if (status == DownloadItemStatusNotStarted) {
+        
+        cellObject.taskStatus = DownloadItemStatusNotStarted;
+        dispatch_async(dispatch_get_main_queue(), ^ {
+            
+            [cell setModel:cellObject];
+        });
+    } else if (status == DownloadItemStatusCancelled) {
+        
+        cellObject.process = 0.0;
+        cellObject.taskStatus = DownloadItemStatusCancelled;
+        cellObject.taskDetail = @"";
+        dispatch_async(dispatch_get_main_queue(), ^ {
+            
+            [cell setModel:cellObject];
+        });
+    } else if (status == DownloadItemStatusStarted) {
+        
+        cellObject.taskStatus = DownloadItemStatusStarted;
+        dispatch_async(dispatch_get_main_queue(), ^ {
+            
+            [cell setModel:cellObject];
+        });
     }
 }
 
@@ -285,36 +332,6 @@
         
         return [NSString stringWithFormat:@"%02ds", seconds];
     }
-}
-
-#pragma mark - startMaxdownload
-
-- (IBAction)startMaxdownload:(id)sender {
-    
-//    if (_canDownLinks.count > _maxCurrentDownloadTasks) {
-//        
-//        // download max config by MAX_CURRENTDOWNLOAD
-//        for (int i = 0; i < _maxCurrentDownloadTasks; i++) {
-//            
-//            [_downloadTasks startDownloadFromURL:[_canDownLinks objectAtIndex:i]];
-//        }
-//    } else {
-//        
-//        // download all
-//        for (int i = 0; i < _canDownLinks.count; i++) {
-//        
-//            [_downloadTasks startDownloadFromURL:[_canDownLinks objectAtIndex:i]];
-//        }
-//    }
-}
-
-#pragma mark - enableDownloadNext
-
-- (IBAction)enableDownloadNext:(id)sender {
-    
-    _isEnableMaxDownload = !_isEnableMaxDownload;
-    
-    NSLog(@"%d",_isEnableMaxDownload);
 }
 
 @end

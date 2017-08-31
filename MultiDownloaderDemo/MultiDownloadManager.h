@@ -18,9 +18,6 @@
 #pragma mark - MultiDownloadItemDelegate
 @property (nonatomic) id<MultiDownloadItemDelegate> delegate;
 
-#pragma mark - activeDownloaders
-- (NSDictionary<NSURL *, DownloaderItem *> *) activeDownloaders;
-
 #pragma mark - initBackgroundDownloadWithId
 - (instancetype)initBackgroundDownloadWithId:(NSString *)identifier currentDownloadMaximum:(int)currentDownloadMaximum delegate:(id<MultiDownloadItemDelegate>) delegate delegateQueue:(NSOperationQueue *)queue;
 
@@ -48,13 +45,13 @@
 #pragma mark - startDownloadFromURL
 - (NSString *)startDownloadFromURL:(NSURL *)sourceURL;
 
-#pragma mark - pauseDownloadFromURL
-- (void)pauseDownloadFromURL:(NSString *)identifier;
+#pragma mark - pauseDownloadWithItemID
+- (void)pauseDownloadWithItemID:(NSString *)identifier;
 
-#pragma mark - resumeDownloadFromURL
-- (void)resumeDownloadFromURL:(NSString *)identifier;
+#pragma mark - resumeDownloadWithItemID
+- (void)resumeDownloadWithItemID:(NSString *)identifier;
 
-#pragma mark - cancelDownloadFromURL
-- (void)cancelDownloadFromURL:(NSString *)identifier;
+#pragma mark - cancelDownloadWithItemID
+- (void)cancelDownloadWithItemID:(NSString *)identifier;
 
 @end

@@ -9,7 +9,7 @@
 #import <XCTest/XCTest.h>
 #import "MultiDownloadManager.h"
 
-@interface MultiDownloaderDemoTests : XCTestCase
+@interface MultiDownloaderDemoTests : XCTestCase <MultiDownloadItemDelegate>
 
 @end
 
@@ -27,13 +27,10 @@
 
 - (void)testExample {
     
-    MultiDownloadManager* downloadTasks = [[MultiDownloadManager sharedManager] initBackgroundDownloadWithId:@"com.vn.vng.zalo.download" currentDownloadMaximum:1 delegate:self delegateQueue:[NSOperationQueue mainQueue]];
-    
-    NSURL* url = [NSURL URLWithString:@"http://spaceflight.nasa.gov/gallery/images/apollo/apollo17/hires/s72-55482.jpg"];
-    
     for(int i = 0; i < 100; i++) {
         
-        [downloadTasks startDownloadFromURL:url];
+        NSURL* url = [NSURL URLWithString:@"http://ovh.net/files/10Mio.dat"];
+        [[[MultiDownloadManager sharedManager] initDefaultDownloadWithDelegate:3 delegate:self delegateQueue:[NSOperationQueue mainQueue]] startDownloadFromURL:url];
     }
 }
 
@@ -42,6 +39,43 @@
     [self measureBlock:^{
         // Put the code you want to measure the time of here.
     }];
+}
+
+
+- (void)multiDownloadItem:(DownloaderItem *)downloaderItem didWriteData:(int64_t)bytesWritten totalBytesWritten:(int64_t)totalBytesWritten totalBytesExpectedToWrite:(int64_t)totalBytesExpectedToWrite {
+    
+    CGFloat progress = (CGFloat)totalBytesWritten / (CGFloat)totalBytesExpectedToWrite;
+    NSLog(@"%f", progress);
+}
+
+#pragma mark - MultiDownloadItem
+
+- (void)multiDownloadItem:(DownloaderItem *)downloaderItem didFinishDownloadFromURL:(NSURL *)destURL withError:(NSError *)error {
+    
+    if (downloaderItem.downloadItemStatus == DownloadItemStatusCancelled) {
+        
+        NSLog(@"File is DownloadItemStatusCancelled");
+        
+    } else if (downloaderItem.downloadItemStatus == DownloadItemStatusCompleted) {
+        
+        NSLog(@"File is DownloadItemStatusCompleted");
+    }
+}
+
+#pragma mark - MultiDownloadItem
+
+- (void)multiDownloadItem:(DownloaderItem *)downloaderItem downloadStatus:(DownloaderItemStatus)status {
+    
+    if(status == DownloadItemStatusPaused) {
+        
+        NSLog(@"File is DownloadItemStatusPaused");
+    } else if (status == DownloadItemStatusExisted) {
+        
+        NSLog(@"File is DownloadItemStatusExisted");
+    } else if (status == DownloadItemStatusNotStarted) {
+        
+       NSLog(@"File is DownloadItemStatusNotStarted");
+    }
 }
 
 @end

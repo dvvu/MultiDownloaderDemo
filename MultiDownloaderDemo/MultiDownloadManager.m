@@ -13,9 +13,11 @@
 
 @interface MultiDownloadManager () <NSURLSessionTaskDelegate, NSURLSessionDownloadDelegate>
 
+@property (nonatomic) ThreadSafeMutableDictionary* currentActiveDownloadItems;
 @property (nonatomic) ThreadSafeForMutableArray* pendingDownloadItems;
-@property (nonatomic) ThreadSafeMutableDictionary* downloadItems;
+@property (nonatomic) ThreadSafeForMutableArray* resumeDownloadItems;
 @property (nonatomic) dispatch_queue_t downloadItemManageQueue;
+@property (nonatomic) dispatch_queue_t removeItemQueue;
 @property (nonatomic) NSURLSession* downloadSession;
 @property (nonatomic) int currentDownloadMaximum;
 
@@ -25,31 +27,32 @@
 
 + (instancetype)sharedManager {
     
-    static id sharedManager = nil;
+    static MultiDownloadManager* sharedInstance = nil;
     static dispatch_once_t onceToken;
     
     dispatch_once(&onceToken, ^{
         
-        sharedManager = [[self alloc] init];
+        sharedInstance = [[self alloc] init];
     });
     
-    return sharedManager;
+    return sharedInstance;
 }
 
 #pragma mark - initBackgroundDownloadWithId
 
 - (instancetype)initBackgroundDownloadWithId:(NSString *)identifier currentDownloadMaximum:(int)currentDownloadMaximum delegate:(id<MultiDownloadItemDelegate>)delegate delegateQueue:(NSOperationQueue *)queue {
     
-    self = [super init];
+    static dispatch_once_t onceToken;
     
-    if (self) {
-        
+    dispatch_once(&onceToken, ^{
+    
         NSURLSessionConfiguration* configuration = [NSURLSessionConfiguration backgroundSessionConfigurationWithIdentifier:identifier];
         _downloadSession = [NSURLSession sessionWithConfiguration:configuration delegate:self delegateQueue:queue];
         _delegate = delegate;
         _currentDownloadMaximum = currentDownloadMaximum;
         [self setupDownloadTask];
-    }
+    });
+    
     return self;
 }
 
@@ -57,16 +60,16 @@
 
 - (instancetype)initDefaultDownloadWithDelegate:(int)currentDownloadMaximum delegate:(id<MultiDownloadItemDelegate>)delegate delegateQueue:(NSOperationQueue *)queue {
     
-    self = [super init];
+    static dispatch_once_t onceToken;
     
-    if (self) {
+    dispatch_once(&onceToken, ^{
         
-        NSURLSessionConfiguration* config = [NSURLSessionConfiguration defaultSessionConfiguration];
-        _downloadSession = [NSURLSession sessionWithConfiguration:config delegate:self delegateQueue:queue];
+        NSURLSessionConfiguration* configurationDefault = [NSURLSessionConfiguration defaultSessionConfiguration];
+        _downloadSession = [NSURLSession sessionWithConfiguration:configurationDefault delegate:self delegateQueue:queue];
         _delegate = delegate;
         _currentDownloadMaximum = currentDownloadMaximum;
         [self setupDownloadTask];
-    }
+    });
     
     return self;
 }
@@ -75,8 +78,11 @@
 
 - (void)setupDownloadTask {
     
-    _downloadItems = [[ThreadSafeMutableDictionary alloc] init];
     _downloadItemManageQueue = dispatch_queue_create("DOWNLOAD_MANAGER_QUEUE", DISPATCH_QUEUE_SERIAL);
+    _removeItemQueue = dispatch_queue_create("REMOVEITEM_QUEUE", DISPATCH_QUEUE_SERIAL);
+    _currentActiveDownloadItems = [[ThreadSafeMutableDictionary alloc] init];
+    _pendingDownloadItems = [[ThreadSafeForMutableArray alloc] init];
+    _resumeDownloadItems = [[ThreadSafeForMutableArray alloc] init];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(terminalApp) name:UIApplicationWillTerminateNotification object:nil];
     
@@ -106,63 +112,53 @@
 
 - (void)URLSession:(NSURLSession *)session downloadTask:(NSURLSessionDownloadTask *)downloadTask didFinishDownloadingToURL:(NSURL *)location {
     
-//    NSURL* sourceURL = [[downloadTask originalRequest] URL];
     NSString* identifier = [NSString stringWithFormat:@"%lud",(unsigned long)[downloadTask taskIdentifier]];
     
     if (identifier) {
         
-        DownloaderItem* downloaderItem = _downloadItems[identifier];
+        DownloaderItem* downloaderItem = [_currentActiveDownloadItems getObjectForKey:identifier];
         
         if (downloaderItem) {
             
             NSURL* destinationLocation;
-            NSError* error;
-            BOOL success = YES;
             
-            // if download failed -> success = NO
-            if ([downloadTask.response isKindOfClass:[NSHTTPURLResponse class]]) {
+            if (downloaderItem.directoryName) {
                 
-                NSInteger statusCode = [(NSHTTPURLResponse*)downloadTask.response statusCode];
+                destinationLocation = [[[self cachesDirectoryUrlPath] URLByAppendingPathComponent:downloaderItem.directoryName] URLByAppendingPathComponent:downloaderItem.fileName];
+            } else {
                 
-                if (statusCode >= 400) {
-                    
-                    NSLog(@"ERROR: HTTP status code %@", @(statusCode));
-                    success = NO;
-                }
+                destinationLocation = [[self cachesDirectoryUrlPath] URLByAppendingPathComponent:downloaderItem.fileName];
             }
             
-            if (success) {
+            [self createDownloadTempDirectory];
+            
+            dispatch_sync(_removeItemQueue, ^{
                 
-                if (downloaderItem.directoryName) {
-                    
-                    destinationLocation = [[[self cachesDirectoryUrlPath] URLByAppendingPathComponent:downloaderItem.directoryName] URLByAppendingPathComponent:downloaderItem.fileName];
-                    
-                } else {
-                    
-                    destinationLocation = [[self cachesDirectoryUrlPath] URLByAppendingPathComponent:downloaderItem.fileName];
-                }
+                [[NSFileManager defaultManager] moveItemAtURL:location toURL:destinationLocation error:nil];
+                [self deleteFileWithName:downloaderItem.fileName];
+            });
+            
+            // download completed.
+            if (_delegate && [_delegate respondsToSelector:@selector(multiDownloadItem:didFinishDownloadFromURL:withError:)]) {
                 
-                [self createDownloadTempDirectory];
-                // Move downloaded item from tmp directory to te caches directory
-                [[NSFileManager defaultManager] moveItemAtURL:location toURL:destinationLocation error:&error];
-                
-                if (error) {
-                    
-                    NSLog(@"Move item at URL ERROR: %@", error);
-                } else {
-                    
-                    if (_delegate && [_delegate respondsToSelector:@selector(multiDownloadItem:didFinishDownloadFromURL:withError:)]) {
-                        downloaderItem.downloadItemStatus = DownloadItemStatusCompleted;
-                        [_delegate multiDownloadItem:downloaderItem didFinishDownloadFromURL:location withError:nil];
-                    }
-                }
+                downloaderItem.downloadItemStatus = DownloadItemStatusCompleted;
+                [_delegate multiDownloadItem:downloaderItem didFinishDownloadFromURL:location withError:nil];
             }
+            
+            dispatch_async(_downloadItemManageQueue, ^{
+                
+                [_currentActiveDownloadItems removeObjectForkey:identifier];
+                
+                if(_pendingDownloadItems.count > 0) {
+                    
+                    DownloaderItem* nextDownloaderItem = [_pendingDownloadItems objectAtIndex:0];
+                    [nextDownloaderItem.downloadTask resume];
+                    
+                    [_currentActiveDownloadItems setObject:nextDownloaderItem forKey:nextDownloaderItem.identifier];
+                    [_pendingDownloadItems removeObject:nextDownloaderItem];
+                }
+            });
         }
-        
-        dispatch_async(_downloadItemManageQueue, ^{
-            
-            [_downloadItems removeObjectForkey:identifier];
-        });
     }
 }
 
@@ -174,10 +170,10 @@
     
     if (_delegate && [_delegate respondsToSelector:@selector(multiDownloadItem:didWriteData:totalBytesWritten:totalBytesExpectedToWrite:)]) {
         
-        DownloaderItem* downloaderItem = _downloadItems[identifier];
+        DownloaderItem* downloaderItem = [_currentActiveDownloadItems getObjectForKey:identifier];
         
         if (downloaderItem.downloadItemStatus == DownloadItemStatusNotStarted) {
-            
+         
             downloaderItem.downloadItemStatus = DownloadItemStatusStarted;
         }
         
@@ -193,8 +189,6 @@
         
         return;
     }
-    
-    NSString* identifier = [NSString stringWithFormat:@"%lud",(unsigned long)[downloadTask taskIdentifier]];
     
     switch ([error code]) {
             
@@ -217,51 +211,6 @@
         default:
             break;
     }
-    
-    if (_delegate && [_delegate respondsToSelector:@selector(multiDownloadItem:didFinishDownloadFromURL:withError:)]) {
-        
-        DownloaderItem* downloaderItem = _downloadItems[identifier];
-        [_delegate multiDownloadItem:downloaderItem didFinishDownloadFromURL:nil withError:error];
-    }
-    
-    if (identifier) {
-        
-        dispatch_async(_downloadItemManageQueue, ^{
-            
-            [_downloadItems removeObjectForkey:identifier];
-        });
-    }
-}
-
-#pragma mark - getIdForActiveDownloadURL...
-
-- (NSInteger)getIdForActiveDownloadURL:(NSURL *)sourceURL {
-    
-    NSInteger aFoundDownloadID = -1;
-    NSArray* aDownloadKeysArray = [_downloadItems allKeys];
-    
-    for (NSNumber* aDownloadID in aDownloadKeysArray) {
-        
-        DownloaderItem* aDownloadItem = [_downloadItems objectForKeyedSubscript:aDownloadID];
-        
-        if ([aDownloadItem.sourceURL isEqual:sourceURL]) {
-            
-            aFoundDownloadID = [aDownloadID unsignedIntegerValue];
-            break;
-        }
-    }
-    return aFoundDownloadID;
-}
-
-#pragma mark - cachesDirectoryUrlPath
-
-- (NSURL *)cachesDirectoryUrlPath {
-    
-    NSArray* paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
-    NSString* cachesDirectory = [paths objectAtIndex:0];
-    NSURL* cachesDirectoryUrl = [NSURL fileURLWithPath:cachesDirectory];
-    
-    return cachesDirectoryUrl;
 }
 
 #pragma mark - startDownloadFromURL
@@ -269,14 +218,6 @@
 - (NSString *)startDownloadFromURL:(NSURL *)sourceURL {
     
     [self createDownloadTempDirectory];
-   
-    if (_downloadItems.count > _currentDownloadMaximum) {
-        
-        
-    } else {
-        
-        
-    }
     
     NSURLRequest* request = [NSURLRequest requestWithURL:sourceURL cachePolicy:NSURLRequestReloadIgnoringCacheData timeoutInterval:10.0];
     NSURLSessionDownloadTask* downloadTask = [_downloadSession downloadTaskWithRequest:request];
@@ -287,51 +228,153 @@
     downloaderItem.sourceURL = sourceURL;
     downloaderItem.fileName = [sourceURL lastPathComponent];
     downloaderItem.downloadItemStatus = DownloadItemStatusStarted;
-    [downloaderItem.downloadTask resume];
+    NSLog(@"%@",downloaderItem.identifier);
     
-    dispatch_async(_downloadItemManageQueue, ^{
+    if (_currentActiveDownloadItems.count >= _currentDownloadMaximum) {
         
-        [_downloadItems setObject:downloaderItem forKeyedSubscript:downloaderItem.identifier];
-    });
+        NSLog(@"pending..... %@",downloaderItem.identifier);
+        [_pendingDownloadItems addObject:downloaderItem];
+    } else {
+        
+        [downloaderItem.downloadTask resume];
+        [_currentActiveDownloadItems setObject:downloaderItem forKey:downloaderItem.identifier];
+    }
     
     return downloaderItem.identifier;
 }
 
-#pragma mark - pauseDownloadFromURL
+#pragma mark - pauseDownloadWithItemID
 
-- (void)pauseDownloadFromURL:(NSString *)identifier {
+- (void)pauseDownloadWithItemID:(NSString *)identifier {
     
-    DownloaderItem* downloaderItem = _downloadItems[identifier];
-    downloaderItem.downloadItemStatus = DownloadItemStatusPaused;
-    [downloaderItem.downloadTask suspend];
-    [_delegate multiDownloadItem:downloaderItem downloadStatus:DownloadItemStatusPaused];
+     DownloaderItem* downloaderItem = [_currentActiveDownloadItems getObjectForKey:identifier];
+ 
+    if (downloaderItem) {
+        
+        // pause currentTask running
+        downloaderItem.downloadItemStatus = DownloadItemStatusPaused;
+        [downloaderItem.downloadTask suspend];
+        [_delegate multiDownloadItem:downloaderItem downloadStatus:DownloadItemStatusPaused];
+        
+        // add into resumeList
+        [_resumeDownloadItems addObject:downloaderItem];
+        
+        // remove out of activeList
+        [_currentActiveDownloadItems removeObjectForkey:identifier];
+        
+        // check PendingList exits -> run next task.
+        if (_pendingDownloadItems.count > 0) {
+            
+            DownloaderItem* nextDownloaderItem = [_pendingDownloadItems objectAtIndex:0];
+            nextDownloaderItem.downloadItemStatus = DownloadItemStatusStarted;
+            [nextDownloaderItem.downloadTask resume];
+            [_delegate multiDownloadItem:nextDownloaderItem downloadStatus:DownloadItemStatusStarted];
+            
+            [_currentActiveDownloadItems setObject:nextDownloaderItem forKey:nextDownloaderItem.identifier];
+            
+            //remove out of pendingList
+            [_pendingDownloadItems removeObject:nextDownloaderItem];
+        }
+    } else {
+        
+        // pause pending Task
+        // get it and change status
+        NSPredicate* predicate = [NSPredicate predicateWithFormat:@"identifier contains[cd] %@", identifier];
+        
+        if ([_pendingDownloadItems filteredArrayUsingPredicate:predicate].count > 0) {
+            
+            DownloaderItem* pendingDownloaderItem = [_pendingDownloadItems filteredArrayUsingPredicate:predicate][0];
+            pendingDownloaderItem.downloadItemStatus = DownloadItemStatusPaused;
+            [_delegate multiDownloadItem:pendingDownloaderItem downloadStatus:DownloadItemStatusPaused];
+            
+            // add into resumeList
+            [_resumeDownloadItems addObject:pendingDownloaderItem];
+            //remove out of pendingList
+            [_pendingDownloadItems removeObject:pendingDownloaderItem];
+        }
+    }
 }
 
-#pragma mark - resumeDownloadFromURL
+#pragma mark - resumeDownloadWithItemID
 
-- (void)resumeDownloadFromURL:(NSString *)identifier {
+- (void)resumeDownloadWithItemID:(NSString *)identifier {
     
-    DownloaderItem* downloaderItem = _downloadItems[identifier];
-    downloaderItem.downloadItemStatus = DownloadItemStatusStarted;
-    [downloaderItem.downloadTask resume];
-    [_delegate multiDownloadItem:downloaderItem downloadStatus:DownloadItemStatusStarted];
+    NSPredicate* predicate = [NSPredicate predicateWithFormat:@"identifier contains[cd] %@", identifier];
+   
+    if ([_resumeDownloadItems filteredArrayUsingPredicate:predicate].count > 0) {
+        
+        if (_currentActiveDownloadItems.count >= _currentDownloadMaximum) {
+            
+            // stop task frist and start new task.
+            DownloaderItem* currentActiveTask = [_currentActiveDownloadItems getFristObject];
+            currentActiveTask.downloadItemStatus =  DownloadItemStatusPaused;
+            [currentActiveTask.downloadTask suspend];
+            [_delegate multiDownloadItem:currentActiveTask downloadStatus:DownloadItemStatusPaused];
+            [_currentActiveDownloadItems removeObjectForkey:currentActiveTask.identifier];
+            
+            // add into resumeList
+            [_resumeDownloadItems addObject:currentActiveTask];
+        }
+        
+        DownloaderItem* downloaderItem = [_resumeDownloadItems filteredArrayUsingPredicate:predicate][0];
+        downloaderItem.downloadItemStatus = DownloadItemStatusStarted;
+        [downloaderItem.downloadTask resume];
+        [_delegate multiDownloadItem:downloaderItem downloadStatus:DownloadItemStatusStarted];
+        
+        [_currentActiveDownloadItems setObject:downloaderItem forKey:downloaderItem.identifier];
+        [_resumeDownloadItems removeObject:downloaderItem];
+    }
 }
 
-#pragma mark - cancelDownloadFromURL
+#pragma mark - cancelDownloadWithItemID
 
-- (void)cancelDownloadFromURL:(NSString *)identifier {
+- (void)cancelDownloadWithItemID:(NSString *)identifier {
     
-    DownloaderItem* downloaderItem = _downloadItems[identifier];
-    downloaderItem.downloadItemStatus = DownloadItemStatusCancelled;
-    [downloaderItem.downloadTask cancel];
-    [_delegate multiDownloadItem:downloaderItem downloadStatus:DownloadItemStatusCancelled];
-}
-
-#pragma mark - activeDownloaders
-
-- (NSDictionary<NSURL *, DownloaderItem *> *) activeDownloaders {
+    DownloaderItem* downloaderItem = [_currentActiveDownloadItems getObjectForKey:identifier];
     
-    return [_downloadItems toNSDictionary];
+    if (downloaderItem) {
+        
+        // cancel activeList
+        [_currentActiveDownloadItems removeObjectForkey:identifier];
+       
+        if (_pendingDownloadItems.count > 0) {
+            
+            DownloaderItem* nextdDownloaderItem = [_pendingDownloadItems objectAtIndex:0];
+            
+            nextdDownloaderItem.downloadItemStatus = DownloadItemStatusStarted;
+            [nextdDownloaderItem.downloadTask resume];
+            
+            [_currentActiveDownloadItems setObject:nextdDownloaderItem forKey:nextdDownloaderItem.identifier];
+            [_pendingDownloadItems removeObject:nextdDownloaderItem];
+        }
+        
+        downloaderItem.downloadItemStatus = DownloadItemStatusCancelled;
+        [downloaderItem.downloadTask cancel];
+        [_delegate multiDownloadItem:downloaderItem downloadStatus:DownloadItemStatusCancelled];
+        
+    } else {
+        
+        NSPredicate* predicate = [NSPredicate predicateWithFormat:@"identifier contains[cd] %@", identifier];
+        
+        if ([_pendingDownloadItems filteredArrayUsingPredicate:predicate].count > 0) {
+            
+            // cancel pendingList
+            downloaderItem = [_pendingDownloadItems filteredArrayUsingPredicate:predicate][0];
+            [_pendingDownloadItems removeObject:downloaderItem];
+            [_delegate multiDownloadItem:downloaderItem downloadStatus:DownloadItemStatusCancelled];
+        } else {
+            
+            NSPredicate* predicate = [NSPredicate predicateWithFormat:@"identifier contains[cd] %@", identifier];
+            
+            // cancel resumeList
+            if ([_resumeDownloadItems filteredArrayUsingPredicate:predicate].count > 0) {
+                
+                downloaderItem = [_resumeDownloadItems filteredArrayUsingPredicate:predicate][0];
+                [_resumeDownloadItems removeObject:downloaderItem];
+                [_delegate multiDownloadItem:downloaderItem downloadStatus:DownloadItemStatusCancelled];
+            }
+        }
+    }
 }
 
 #pragma mark - createDownloadTempDirectory
@@ -490,6 +533,17 @@
             }
         }
     }];
+}
+
+#pragma mark - cachesDirectoryUrlPath
+
+- (NSURL *)cachesDirectoryUrlPath {
+    
+    NSArray* paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
+    NSString* cachesDirectory = [paths objectAtIndex:0];
+    NSURL* cachesDirectoryUrl = [NSURL fileURLWithPath:cachesDirectory];
+    
+    return cachesDirectoryUrl;
 }
 
 @end

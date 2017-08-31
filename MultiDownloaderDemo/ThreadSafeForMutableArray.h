@@ -19,10 +19,16 @@
 #pragma mark - removeObject
 - (void)removeObject:(NSObject *)object;
 
+#pragma mark - removeObjectAtIndex
+- (void)removeObjectAtIndex:(NSUInteger)index;
+
 #pragma mark - objectAtIndex
 - (id)objectAtIndex:(NSUInteger)index;
 
 #pragma mark - count
 - (NSUInteger)count;
+
+#pragma mark - filteredArrayUsingPredicate
+- (NSArray *)filteredArrayUsingPredicate:(NSPredicate *)predicate;
 
 @end

@@ -17,17 +17,24 @@
 
 @implementation ThreadSafeMutableDictionary
 
+#pragma mark - init
+
 - (instancetype)init {
     
     self = [super init];
     
-    _threadSafeDictionary = [[NSMutableDictionary alloc]init];
-    _threadSafeDictionaryQueue = dispatch_queue_create("threadSafeDictionar_Queue", NULL);
-    
+    if (self) {
+        
+        _threadSafeDictionary = [[NSMutableDictionary alloc]init];
+        _threadSafeDictionaryQueue = dispatch_queue_create("threadSafeDictionar_Queue", NULL);
+    }
+
     return self;
 }
 
-- (id)objectForKeyedSubscript:(id)key {
+#pragma mark - getObjectForKey
+
+- (id)getObjectForKey:(id)key {
     
     NSObject* __block result;
     
@@ -39,25 +46,17 @@
     return result;
 }
 
-- (void)setObject:(id)obj forKeyedSubscript:(id<NSCopying>)key {
+#pragma mark - setObjectForKey
+
+- (void)setObject:(id)object forKey:(id<NSCopying>)key {
     
     dispatch_async(_threadSafeDictionaryQueue, ^{
         
-        _threadSafeDictionary[key] = obj;
+        _threadSafeDictionary[key] = object;
     });
 }
 
-- (NSDictionary *)toNSDictionary {
-    
-    NSDictionary* __block result;
-    
-    dispatch_sync(_threadSafeDictionaryQueue, ^{
-        
-        result = _threadSafeDictionary;
-    });
-    
-    return result;
-}
+#pragma mark - removeObjectForkey
 
 - (void)removeObjectForkey:(NSString *)key {
     
@@ -67,36 +66,14 @@
     });
 }
 
+#pragma mark - removeAllObjects
+
 - (void)removeAllObjects {
     
     dispatch_async(_threadSafeDictionaryQueue, ^{
         
         [_threadSafeDictionary removeAllObjects];
     });
-}
-
-- (NSArray *)allKeys {
-    
-    NSArray* __block keys;
-    
-    dispatch_sync(_threadSafeDictionaryQueue, ^{
-        
-        keys = [_threadSafeDictionary allKeys];
-    });
-    
-    return keys;
-}
-
-- (NSArray *)allValues {
-    
-    NSArray* __block values;
-    
-    dispatch_sync(_threadSafeDictionaryQueue, ^{
-        
-        values = [_threadSafeDictionary allValues];
-    });
-    
-    return values;
 }
 
 #pragma mark - count
@@ -109,7 +86,22 @@
         
         count = [_threadSafeDictionary count];
     });
+    
     return count;
+}
+
+#pragma mark - getFristObject
+
+- (id)getFristObject {
+    
+    NSObject* __block result;
+    
+    dispatch_sync(_threadSafeDictionaryQueue, ^{
+        
+        result = [[_threadSafeDictionary allValues] firstObject];
+    });
+    
+    return result;
 }
 
 @end

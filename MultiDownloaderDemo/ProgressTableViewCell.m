@@ -13,7 +13,7 @@
 @interface ProgressTableViewCell ()
 
 @property (nonatomic) DownloadButtonStatus downloadButtonStatus;
-
+@property (nonatomic) UIView* progresssCellView;
 @end
 
 @implementation ProgressTableViewCell
@@ -37,6 +37,7 @@
 - (BOOL)shouldUpdateCellWithObject:(id<ProgressTableViewCellObjectProtocol>)object {
     
     ProgressTableViewCellObject* cellObject = (ProgressTableViewCellObject *)object;
+    
     _link = cellObject.taskUrl;
     _delegate = cellObject.delegate;
     _taskNameLabel.text = cellObject.taskName;
@@ -45,7 +46,7 @@
     _taskLinkLabel.text = [cellObject.taskUrl absoluteString];
     _identifier = cellObject.identifier;
     [self statusDownloader: cellObject.taskStatus];
-    
+
     return YES;
 }
 
@@ -74,9 +75,10 @@
         case DownloadItemStatusNotStarted:
             
             [_downloadButton setEnabled:YES];
-            [_cancelButton setEnabled:YES];
+            [_cancelButton setEnabled:NO];
+            [_downloadButton setHidden:NO];
+            [_cancelButton setHidden:NO];
             [_progressView setHidden:YES];
-            
             [_downloadButton setImage:[UIImage imageNamed:@"ic_download"] forState:UIControlStateNormal];
             _downloadButtonStatus = DownloadButtonStatusDownload;
             _taskStatusLabel.text = @"Ready";
@@ -86,16 +88,31 @@
             
             [_downloadButton setEnabled:YES];
             [_cancelButton setEnabled:YES];
+            [_downloadButton setHidden:NO];
+            [_cancelButton setHidden:NO];
             [_progressView setHidden:NO];
             [_downloadButton setImage:[UIImage imageNamed:@"ic_pause"] forState:UIControlStateNormal];
             _downloadButtonStatus = DownloadButtonStatusPause;
             _taskStatusLabel.text = @"Downloading...";
+            break;
+        case DownloadItemStatusPending:
+            
+            [_downloadButton setEnabled:YES];
+            [_cancelButton setEnabled:YES];
+            [_downloadButton setHidden:NO];
+            [_cancelButton setHidden:NO];
+            [_progressView setHidden:NO];
+            [_downloadButton setImage:[UIImage imageNamed:@"ic_pause"] forState:UIControlStateNormal];
+            _downloadButtonStatus = DownloadButtonStatusPause;
+            _taskStatusLabel.text = @"Pending...";
             break;
             
         case DownloadItemStatusPaused:
             
             [_downloadButton setEnabled:YES];
             [_cancelButton setEnabled:YES];
+            [_downloadButton setHidden:NO];
+            [_cancelButton setHidden:NO];
             [_progressView setHidden:NO];
             [_downloadButton setImage:[UIImage imageNamed:@"ic_play"] forState:UIControlStateNormal];
             _downloadButtonStatus = DownloadButtonStatusPlay;
@@ -106,6 +123,8 @@
             
             [_downloadButton setEnabled:YES];
             [_cancelButton setEnabled:NO];
+            [_downloadButton setHidden:NO];
+            [_cancelButton setHidden:NO];
             [_progressView setHidden:YES];
             [_downloadButton setImage:[UIImage imageNamed:@"ic_download"] forState:UIControlStateNormal];
             _downloadButtonStatus = DownloadButtonStatusDownload;
@@ -150,88 +169,100 @@
     
     [self setBackgroundColor:[UIColor clearColor]];
     
+    _progresssCellView = [[UIView alloc] init];
+    _progresssCellView.layer.cornerRadius = 6;
+    [_progresssCellView setBackgroundColor:[UIColor whiteColor]];
+    [self addSubview:_progresssCellView];
+    [_progresssCellView mas_makeConstraints:^(MASConstraintMaker* make) {
+        
+        make.edges.equalTo(self).insets(UIEdgeInsetsMake(5, 5, 5, 5));
+    }];
+    ;
+    CGFloat scale = FONTSIZE_SCALE;
+    
     _taskNameLabel = [[UILabel alloc] init];
     _taskNameLabel.text = @"Task download name";
     [_taskNameLabel setTextColor:[UIColor blueColor]];
-    [_taskNameLabel setFont:[UIFont fontWithName:@"Helvetica-Bold" size:12]];
+    [_taskNameLabel setFont:[UIFont boldSystemFontOfSize:16 * scale]];
     [self addSubview:_taskNameLabel];
     
     _taskLinkLabel = [[UILabel alloc] init];
     _taskLinkLabel.text = @"http://download";
-    [_taskLinkLabel setFont:[UIFont systemFontOfSize:10]];
+    [_taskLinkLabel setFont:[UIFont systemFontOfSize:13 * scale]];
     [_taskLinkLabel setTextColor:[UIColor darkGrayColor]];
-    [self addSubview:_taskLinkLabel];
+    [_progresssCellView addSubview:_taskLinkLabel];
     
     _taskStatusLabel = [[UILabel alloc] init];
     _taskStatusLabel.text = @"Downloading...";
-    [_taskStatusLabel setFont:[UIFont systemFontOfSize:10]];
+    [_taskStatusLabel setFont:[UIFont systemFontOfSize:10 * scale]];
     [_taskStatusLabel setTextColor:[UIColor darkGrayColor]];
-    [self addSubview:_taskStatusLabel];
+    [_progresssCellView addSubview:_taskStatusLabel];
     
     _taskDetailLabel = [[UILabel alloc] init];
     _taskDetailLabel.text = @"0% - 30kb/24M - About 20 minute";
-    [_taskDetailLabel setFont:[UIFont systemFontOfSize:10]];
+    [_taskDetailLabel setFont:[UIFont systemFontOfSize:9 * scale]];
     [_taskDetailLabel setTextColor:[UIColor darkGrayColor]];
-    [self addSubview:_taskDetailLabel];
+    [_progresssCellView addSubview:_taskDetailLabel];
     
     _downloadButton = [[UIButton alloc] init];
+    [_downloadButton setTitleColor:[UIColor whiteColor] forState:UIControlStateHighlighted];
     [_downloadButton addTarget:self action:@selector(downloadAction:) forControlEvents:UIControlEventTouchUpInside];
     [_downloadButton setImage:[UIImage imageNamed:@"ic_download"] forState:UIControlStateNormal];
-    [self addSubview:_downloadButton];
+    [_progresssCellView addSubview:_downloadButton];
     
     _cancelButton = [[UIButton alloc] init];
     [_cancelButton addTarget:self action:@selector(stopAction:) forControlEvents:UIControlEventTouchUpInside];
     [_cancelButton setImage:[UIImage imageNamed:@"ic_stop"] forState:UIControlStateNormal];
-    [self addSubview:_cancelButton];
+    [_progresssCellView addSubview:_cancelButton];
     
     _progressView = [[UIProgressView alloc] init];
     _progressView.progress = 0;
-    [self addSubview:_progressView];
+    [_progresssCellView addSubview:_progressView];
     
     [_taskNameLabel mas_makeConstraints:^(MASConstraintMaker* make) {
         
-        make.top.equalTo(self).offset(20);
-        make.left.equalTo(self).offset(10);
+        make.top.equalTo(_progresssCellView).offset(20);
+        make.left.equalTo(_progresssCellView).offset(10);
     }];
     
     [_taskLinkLabel mas_makeConstraints:^(MASConstraintMaker* make) {
         
         make.top.equalTo(_taskNameLabel.mas_bottom).offset(8);
         make.right.equalTo(_downloadButton.mas_left).offset(-5);
-        make.left.equalTo(self).offset(10);
+        make.left.equalTo(_progresssCellView).offset(10);
     }];
     
     [_progressView mas_makeConstraints:^(MASConstraintMaker* make) {
         
-        make.left.equalTo(self).offset(8);
-        make.right.equalTo(self).offset(-8);
-        make.bottom.equalTo(self).offset(-10);
+        make.left.equalTo(_progresssCellView).offset(8);
+        make.right.equalTo(_progresssCellView).offset(-8);
+        make.bottom.equalTo(_progresssCellView).offset(-10);
     }];
     
     [_taskStatusLabel mas_makeConstraints:^(MASConstraintMaker* make) {
         
         make.bottom.equalTo(_progressView.mas_top).offset(-8);
-        make.left.equalTo(self).offset(10);
+        make.left.equalTo(_progresssCellView).offset(10);
     }];
     
     [_taskDetailLabel mas_makeConstraints:^(MASConstraintMaker* make) {
         
         make.bottom.equalTo(_progressView.mas_top).offset(-8);
-        make.right.equalTo(self).offset(-8);
+        make.right.equalTo(_progresssCellView).offset(-8);
     }];
     
     [_cancelButton mas_makeConstraints:^(MASConstraintMaker* make) {
         
-        make.right.equalTo(self).offset(-8);
-        make.centerY.equalTo(self);
-        make.width.and.height.mas_equalTo(30);
+        make.right.equalTo(_progresssCellView).offset(-8);
+        make.centerY.equalTo(_progresssCellView);
+        make.width.and.height.mas_equalTo(35);
     }];
     
     [_downloadButton mas_makeConstraints:^(MASConstraintMaker* make) {
         
         make.right.equalTo(_cancelButton.mas_left).offset(-8);
-        make.centerY.equalTo(self);
-        make.width.and.height.mas_equalTo(30);
+        make.centerY.equalTo(_progresssCellView);
+        make.width.and.height.mas_equalTo(35);
     }];
 }
 

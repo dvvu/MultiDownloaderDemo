@@ -10,13 +10,12 @@
 
 @interface ThreadSafeForMutableArray()
 
-@property (nonatomic) NSMutableArray* threadSafeArray;
 @property (nonatomic) dispatch_queue_t threadSafeForArrayQueue;
+@property (nonatomic) NSMutableArray* threadSafeArray;
 
 @end
 
 @implementation ThreadSafeForMutableArray
-
 
 #pragma mark - init
 
@@ -36,14 +35,12 @@
 
 - (void)addObject:(NSObject *)object {
     
-    // Valid input object
     if (object == nil) {
         
         NSLog(@"Object must be nonnull");
         return;
     }
     
-    // Add to array
     dispatch_async(_threadSafeForArrayQueue, ^{
         
         [_threadSafeArray addObject:object];
@@ -54,17 +51,33 @@
 
 - (void)removeObject:(NSObject *)object {
     
-    // Valid input object
     if (object == nil) {
         
         NSLog(@"Object must be nonnull");
         return;
     }
     
-    // Remove object from array
     dispatch_async(_threadSafeForArrayQueue, ^{
         
         [_threadSafeArray removeObject:object];
+    });
+}
+
+#pragma mark - removeObjectAtIndex
+
+- (void)removeObjectAtIndex:(NSUInteger)index {
+    
+    NSUInteger numberOfElements = [self count];
+    
+    if (index >= numberOfElements) {
+        
+        NSLog(@"Index is out of range");
+        return;
+    }
+    
+    dispatch_async(_threadSafeForArrayQueue, ^{
+        
+        [_threadSafeArray removeObjectAtIndex:index];
     });
 }
 
@@ -72,7 +85,6 @@
 
 - (id)objectAtIndex:(NSUInteger)index {
     
-    // Valid input index
     NSUInteger numberOfElements = [self count];
     
     if (index >= numberOfElements) {
@@ -81,13 +93,13 @@
         return nil;
     }
     
-    // Return object at index in array
     id __block object;
     
     dispatch_sync(_threadSafeForArrayQueue, ^{
         
         object = [_threadSafeArray objectAtIndex:index];
     });
+    
     return object;
 }
 
@@ -102,6 +114,19 @@
         count = [_threadSafeArray count];
     });
     return count;
+}
+
+#pragma mark - filteredArrayUsingPredicate
+
+- (NSArray *)filteredArrayUsingPredicate:(NSPredicate *)predicate {
+    
+    NSArray __block* result;
+    
+    dispatch_sync(_threadSafeForArrayQueue, ^{
+        
+        result = [_threadSafeArray filteredArrayUsingPredicate:predicate];
+    });
+    return result;
 }
 
 @end

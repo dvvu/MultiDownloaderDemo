@@ -11,13 +11,22 @@
 
 @interface ThreadSafeMutableDictionary : NSObject
 
-- (id)objectForKeyedSubscript:(id)key;
-- (void)setObject:(id)obj forKeyedSubscript:(id <NSCopying>)key;
-- (NSDictionary *)toNSDictionary;
+#pragma mark - setObjectForKey
+- (void)setObject:(id)object forKey:(id <NSCopying>)key;
+
+#pragma mark - getObjectForKey
+- (id)getObjectForKey:(id)key;
+
+#pragma mark - getFristObject
+- (id)getFristObject;
+
+#pragma mark - count
 - (void)removeObjectForkey:(id <NSCopying>)key;
+
+#pragma mark - count
 - (void)removeAllObjects;
-- (NSArray *)allKeys;
-- (NSArray *)allValues;
+
 #pragma mark - count
 - (NSUInteger)count;
+
 @end
