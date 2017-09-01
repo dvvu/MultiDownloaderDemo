@@ -15,6 +15,9 @@
 #pragma mark - singleton
 + (instancetype)sharedManager;
 
+#pragma mark - backgroundTransferCompletionHandler
+@property (nonatomic) void(^backgroundTransferCompletionHandler)();
+
 #pragma mark - MultiDownloadItemDelegate
 @property (nonatomic) id<MultiDownloadItemDelegate> delegate;
 
@@ -23,24 +26,6 @@
 
 #pragma mark - initDefaultDownloadWithDelegate
 - (instancetype)initDefaultDownloadWithDelegate:(int)currentDownloadMaximum delegate:(id<MultiDownloadItemDelegate>)delegate delegateQueue:(NSOperationQueue *)queue;
-
-#pragma mark - backgroundTransferCompletionHandler
-@property (nonatomic) void(^backgroundTransferCompletionHandler)();
-
-#pragma mark - fileExistsForUrl
-- (BOOL)fileExistsForUrl:(NSURL *)sourceURL;
-
-#pragma mark - fileExistsWithName
-- (BOOL)fileExistsWithName:(NSString *)fileName;
-
-#pragma mark - fileExistsWithName
-- (BOOL)deleteFileForUrl:(NSURL *)sourceURL;
-
-#pragma mark - fileExistsWithName
-- (BOOL)deleteFileWithName:(NSString *)fileName;
-
-#pragma mark - fileExistsWithName
-- (NSString *)localPathForFile:(NSURL *)sourceURL;
 
 #pragma mark - startDownloadFromURL
 - (NSString *)startDownloadFromURL:(NSURL *)sourceURL;
@@ -53,5 +38,11 @@
 
 #pragma mark - cancelDownloadWithItemID
 - (void)cancelDownloadWithItemID:(NSString *)identifier;
+
+#pragma mark - fileExistsWithName
+- (BOOL)fileExistsWithName:(NSString *)fileName;
+
+#pragma mark - fileExistsForUrl
+- (BOOL)fileExistsForUrl:(NSURL *)sourceURL;
 
 @end

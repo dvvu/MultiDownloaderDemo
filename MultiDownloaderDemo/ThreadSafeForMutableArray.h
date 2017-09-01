@@ -10,25 +10,25 @@
 
 @interface ThreadSafeForMutableArray : NSObject
 
-#pragma mark - init
-- (instancetype)init;
-
-#pragma mark - addObject
-- (void)addObject:(NSObject *)object;
-
-#pragma mark - removeObject
-- (void)removeObject:(NSObject *)object;
+#pragma mark - filteredArrayUsingPredicate
+- (NSArray *)filteredArrayUsingPredicate:(NSPredicate *)predicate;
 
 #pragma mark - removeObjectAtIndex
 - (void)removeObjectAtIndex:(NSUInteger)index;
 
+#pragma mark - removeObject
+- (void)removeObject:(NSObject *)object;
+
 #pragma mark - objectAtIndex
 - (id)objectAtIndex:(NSUInteger)index;
+
+#pragma mark - addObject
+- (void)addObject:(NSObject *)object;
 
 #pragma mark - count
 - (NSUInteger)count;
 
-#pragma mark - filteredArrayUsingPredicate
-- (NSArray *)filteredArrayUsingPredicate:(NSPredicate *)predicate;
+#pragma mark - init
+- (instancetype)init;
 
 @end

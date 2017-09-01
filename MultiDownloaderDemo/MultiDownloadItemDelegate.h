@@ -18,13 +18,12 @@
 @protocol MultiDownloadItemDelegate <NSObject>
 
 #pragma mark - MultiDownloadItem
-- (void)multiDownloadItem:(DownloaderItem *)downloaderItem downloadStatus:(DownloaderItemStatus)status;
-
-#pragma mark - MultiDownloadItem
 - (void)multiDownloadItem:(DownloaderItem *)downloaderItem didWriteData:(int64_t)bytesWritten totalBytesWritten:(int64_t)totalBytesWritten totalBytesExpectedToWrite:(int64_t)totalBytesExpectedToWrite;
 
 #pragma mark - MultiDownloadItem
 - (void)multiDownloadItem:(DownloaderItem *)downloaderItem didFinishDownloadFromURL:(NSURL *)destUrl withError:(NSError *)error;
 
+#pragma mark - MultiDownloadItem
+- (void)multiDownloadItem:(DownloaderItem *)downloaderItem downloadStatus:(DownloaderItemStatus)status;
 
 @end

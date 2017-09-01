@@ -27,11 +27,11 @@
 
 - (void)testExample {
     
-    for(int i = 0; i < 100; i++) {
-        
-        NSURL* url = [NSURL URLWithString:@"http://ovh.net/files/10Mio.dat"];
-        [[[MultiDownloadManager sharedManager] initDefaultDownloadWithDelegate:3 delegate:self delegateQueue:[NSOperationQueue mainQueue]] startDownloadFromURL:url];
-    }
+//    for (int i = 0; i< 100; i++) {
+//        
+//        MultiDownloadManager* downloadTasks = [[MultiDownloadManager sharedManager] initBackgroundDownloadWithId:@"com.vn.vng.zalo.download" currentDownloadMaximum:_maxCurrentDownloadTasks delegate:self delegateQueue:[NSOperationQueue mainQueue]];
+//        [downloadTasks startDownloadFromURL:sourceURL];
+//    }
 }
 
 - (void)testPerformanceExample {

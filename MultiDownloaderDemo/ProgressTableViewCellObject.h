@@ -15,10 +15,10 @@
 @protocol ProgressTableViewCellObjectProtocol <NSObject>
 
 @property (nonatomic) id<MultiDownloadCellActionDelegate> delegate;
-@property (nonatomic) DownloaderItemStatus taskStatus;
 @property (readonly, nonatomic, copy) NSString* identifier;
 @property (readonly, nonatomic, copy) NSString* taskDetail;
 @property (readonly, nonatomic, copy) NSString* taskName;
+@property (nonatomic) DownloaderItemStatus taskStatus;
 @property (readonly, nonatomic, copy) NSURL* taskUrl;
 @property (readonly, nonatomic) CGFloat process;
 

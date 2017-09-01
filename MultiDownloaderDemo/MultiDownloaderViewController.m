@@ -24,6 +24,7 @@
 @property (nonatomic) ThreadSafeForMutableArray* canDownLinks;
 @property (nonatomic) MultiDownloadManager* downloadTasks;
 @property (nonatomic) NSMutableArray* validDownloadLinks;
+@property (nonatomic) ConnectionType connectionType;
 @property (nonatomic) int maxCurrentDownloadTasks;
 @property (nonatomic) NSDictionary* cellObjects;
 @property (nonatomic) BOOL isEnableMaxDownload;
@@ -43,10 +44,34 @@
     _tableView.delegate = self;
     _tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     _multiDownloadItemsQueue = dispatch_queue_create("MULTIDOWNLOADITEMS_QUEUE", DISPATCH_QUEUE_SERIAL);
-    [_tableView setBackgroundColor:[UIColor lightGrayColor]];
-    [self checkConnectionNetWork];
+    [_tableView setBackgroundColor:[UIColor colorWithRed:48/255.f green:22/255.f blue:49/255.f alpha:1.0f]];
     [self.view addSubview:_tableView];
-
+    
+    _connectionType = [MultiDownloaderViewController checkConnectionNetWork];
+   
+    switch (_connectionType) {
+            
+        case ConnectionTypeUnknown:
+            
+            break;
+        case ConnectionType3G:
+            
+            _maxCurrentDownloadTasks = 1;
+            [_connectionStatusButton setTitle:@"3G"];
+            break;
+        case ConnectionTypeWiFi:
+            
+            _maxCurrentDownloadTasks = 2;
+            [_connectionStatusButton setTitle:@"WIFI"];
+            break;
+        case ConnectionTypeNone:
+            
+            _maxCurrentDownloadTasks = 0;
+            [_connectionStatusButton setTitle:@"DISCONNECT"];
+            break;
+        default:
+            break;
+    }
     [_tableView mas_makeConstraints:^(MASConstraintMaker* make) {
         
         make.top.equalTo(self.view).offset(0);
@@ -56,41 +81,6 @@
     }];
     
     [self setupData];
-}
-
-#pragma mark - checkConnectionNetWork
-
-- (ConnectionType)checkConnectionNetWork {
-    
-    SCNetworkReachabilityRef reachability = SCNetworkReachabilityCreateWithName(NULL, "8.8.8.8");
-    SCNetworkReachabilityFlags flags;
-    BOOL success = SCNetworkReachabilityGetFlags(reachability, &flags);
-    CFRelease(reachability);
-    
-    if (!success) {
-    
-        return ConnectionTypeUnknown;
-    }
-    
-    BOOL isReachable = ((flags & kSCNetworkReachabilityFlagsReachable) != 0);
-    BOOL needsConnection = ((flags & kSCNetworkReachabilityFlagsConnectionRequired) != 0);
-    BOOL isNetworkReachable = (isReachable && !needsConnection);
-    
-    if (!isNetworkReachable) {
-      
-        [_connectionStatusButton setTitle:@"DISCONNECT"];
-        return ConnectionTypeNone;
-    } else if ((flags & kSCNetworkReachabilityFlagsIsWWAN) != 0) {
-        
-        _maxCurrentDownloadTasks = 1;
-        [_connectionStatusButton setTitle:@"3G"];
-        return ConnectionType3G;
-    } else {
-        
-        _maxCurrentDownloadTasks = 2;
-        [_connectionStatusButton setTitle:@"WIFI"];
-        return ConnectionTypeWiFi;
-    }
 }
 
 #pragma mark - setupData
@@ -120,6 +110,11 @@
             if ([_downloadTasks fileExistsForUrl:url]) {
                 
                 cellObject.taskStatus = DownloadItemStatusCompleted;
+            }
+            
+            if (_connectionType == ConnectionTypeNone) {
+                
+                cellObject.taskStatus = DownloadItemStatusInterrupted;
             }
             
             NSPredicate* predicate = [NSPredicate predicateWithFormat:@"SELF CONTAINS[cd] %@", _downloadLinks[i]];
@@ -331,6 +326,36 @@
     } else {
         
         return [NSString stringWithFormat:@"%02ds", seconds];
+    }
+}
+
+#pragma mark - checkConnectionNetWork
+
++ (ConnectionType)checkConnectionNetWork {
+    
+    SCNetworkReachabilityRef reachability = SCNetworkReachabilityCreateWithName(NULL, "8.8.8.8");
+    SCNetworkReachabilityFlags flags;
+    BOOL success = SCNetworkReachabilityGetFlags(reachability, &flags);
+    CFRelease(reachability);
+    
+    if (!success) {
+        
+        return ConnectionTypeUnknown;
+    }
+    
+    BOOL isReachable = ((flags & kSCNetworkReachabilityFlagsReachable) != 0);
+    BOOL needsConnection = ((flags & kSCNetworkReachabilityFlagsConnectionRequired) != 0);
+    BOOL isNetworkReachable = (isReachable && !needsConnection);
+    
+    if (!isNetworkReachable) {
+        
+        return ConnectionTypeNone;
+    } else if ((flags & kSCNetworkReachabilityFlagsIsWWAN) != 0) {
+        
+        return ConnectionType3G;
+    } else {
+        
+        return ConnectionTypeWiFi;
     }
 }
 

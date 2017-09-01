@@ -118,46 +118,50 @@
         
         DownloaderItem* downloaderItem = [_currentActiveDownloadItems getObjectForKey:identifier];
         
-        if (downloaderItem) {
+        if (!downloaderItem) {
             
-            NSURL* destinationLocation;
+            NSPredicate* predicate = [NSPredicate predicateWithFormat:@"identifier contains[cd] %@", identifier];
             
-            if (downloaderItem.directoryName) {
+            if ([_resumeDownloadItems filteredArrayUsingPredicate:predicate].count > 0) {
                 
-                destinationLocation = [[[self cachesDirectoryUrlPath] URLByAppendingPathComponent:downloaderItem.directoryName] URLByAppendingPathComponent:downloaderItem.fileName];
-            } else {
-                
-                destinationLocation = [[self cachesDirectoryUrlPath] URLByAppendingPathComponent:downloaderItem.fileName];
+                downloaderItem = [_resumeDownloadItems filteredArrayUsingPredicate:predicate][0];
             }
+        }
+        
+        NSURL* destinationLocation;
+        
+        if (downloaderItem.directoryName) {
             
-            [self createDownloadTempDirectory];
+            destinationLocation = [[[self cachesDirectoryUrlPath] URLByAppendingPathComponent:downloaderItem.directoryName] URLByAppendingPathComponent:downloaderItem.fileName];
+        } else {
             
-            dispatch_sync(_removeItemQueue, ^{
-                
-                [[NSFileManager defaultManager] moveItemAtURL:location toURL:destinationLocation error:nil];
-                [self deleteFileWithName:downloaderItem.fileName];
-            });
+            destinationLocation = [[self cachesDirectoryUrlPath] URLByAppendingPathComponent:downloaderItem.fileName];
+        }
+        
+        [self createDownloadTempDirectory];
+        
+        dispatch_sync(_removeItemQueue, ^{
             
-            // download completed.
-            if (_delegate && [_delegate respondsToSelector:@selector(multiDownloadItem:didFinishDownloadFromURL:withError:)]) {
-                
-                downloaderItem.downloadItemStatus = DownloadItemStatusCompleted;
-                [_delegate multiDownloadItem:downloaderItem didFinishDownloadFromURL:location withError:nil];
-            }
+            [[NSFileManager defaultManager] moveItemAtURL:location toURL:destinationLocation error:nil];
+            [self deleteFileWithName:downloaderItem.fileName];
+        });
+        
+        // download completed.
+        if (_delegate && [_delegate respondsToSelector:@selector(multiDownloadItem:didFinishDownloadFromURL:withError:)]) {
             
-            dispatch_async(_downloadItemManageQueue, ^{
-                
-                [_currentActiveDownloadItems removeObjectForkey:identifier];
-                
-                if(_pendingDownloadItems.count > 0) {
-                    
-                    DownloaderItem* nextDownloaderItem = [_pendingDownloadItems objectAtIndex:0];
-                    [nextDownloaderItem.downloadTask resume];
-                    
-                    [_currentActiveDownloadItems setObject:nextDownloaderItem forKey:nextDownloaderItem.identifier];
-                    [_pendingDownloadItems removeObject:nextDownloaderItem];
-                }
-            });
+            downloaderItem.downloadItemStatus = DownloadItemStatusCompleted;
+            [_delegate multiDownloadItem:downloaderItem didFinishDownloadFromURL:location withError:nil];
+        }
+        
+        [_currentActiveDownloadItems removeObjectForkey:identifier];
+        
+        if(_pendingDownloadItems.count > 0) {
+            
+            DownloaderItem* nextDownloaderItem = [_pendingDownloadItems objectAtIndex:0];
+            [nextDownloaderItem.downloadTask resume];
+            
+            [_currentActiveDownloadItems setObject:nextDownloaderItem forKey:nextDownloaderItem.identifier];
+            [_pendingDownloadItems removeObject:nextDownloaderItem];
         }
     }
 }
@@ -171,6 +175,10 @@
     if (_delegate && [_delegate respondsToSelector:@selector(multiDownloadItem:didWriteData:totalBytesWritten:totalBytesExpectedToWrite:)]) {
         
         DownloaderItem* downloaderItem = [_currentActiveDownloadItems getObjectForKey:identifier];
+        
+        // check case delay when click suspend.
+        NSLog(@"current %lu - pending %lu",(unsigned long)_currentActiveDownloadItems.count, (unsigned long)_pendingDownloadItems.count);
+        downloaderItem.isActiveDownload = YES;
         
         if (downloaderItem.downloadItemStatus == DownloadItemStatusNotStarted) {
          
@@ -219,15 +227,13 @@
     
     [self createDownloadTempDirectory];
     
-    NSURLRequest* request = [NSURLRequest requestWithURL:sourceURL cachePolicy:NSURLRequestReloadIgnoringCacheData timeoutInterval:10.0];
+    NSURLRequest* request = [NSURLRequest requestWithURL:sourceURL];
     NSURLSessionDownloadTask* downloadTask = [_downloadSession downloadTaskWithRequest:request];
     DownloaderItem* downloaderItem = [[DownloaderItem alloc] initWithActiveDownloadTask:downloadTask with:sourceURL session:_downloadSession];
     
-    downloaderItem = [[DownloaderItem alloc] initWithActiveDownloadTask:downloadTask with:sourceURL session:_downloadSession];
     downloaderItem.startDate = [NSDate date];
     downloaderItem.sourceURL = sourceURL;
     downloaderItem.fileName = [sourceURL lastPathComponent];
-    downloaderItem.downloadItemStatus = DownloadItemStatusStarted;
     NSLog(@"%@",downloaderItem.identifier);
     
     if (_currentActiveDownloadItems.count >= _currentDownloadMaximum) {
@@ -239,7 +245,7 @@
         [downloaderItem.downloadTask resume];
         [_currentActiveDownloadItems setObject:downloaderItem forKey:downloaderItem.identifier];
     }
-    
+
     return downloaderItem.identifier;
 }
 
@@ -247,7 +253,7 @@
 
 - (void)pauseDownloadWithItemID:(NSString *)identifier {
     
-     DownloaderItem* downloaderItem = [_currentActiveDownloadItems getObjectForKey:identifier];
+    DownloaderItem* downloaderItem = [_currentActiveDownloadItems getObjectForKey:identifier];
  
     if (downloaderItem) {
         
@@ -269,7 +275,6 @@
             nextDownloaderItem.downloadItemStatus = DownloadItemStatusStarted;
             [nextDownloaderItem.downloadTask resume];
             [_delegate multiDownloadItem:nextDownloaderItem downloadStatus:DownloadItemStatusStarted];
-            
             [_currentActiveDownloadItems setObject:nextDownloaderItem forKey:nextDownloaderItem.identifier];
             
             //remove out of pendingList
@@ -285,6 +290,7 @@
             
             DownloaderItem* pendingDownloaderItem = [_pendingDownloadItems filteredArrayUsingPredicate:predicate][0];
             pendingDownloaderItem.downloadItemStatus = DownloadItemStatusPaused;
+            [downloaderItem.downloadTask suspend];
             [_delegate multiDownloadItem:pendingDownloaderItem downloadStatus:DownloadItemStatusPaused];
             
             // add into resumeList
@@ -360,6 +366,7 @@
             
             // cancel pendingList
             downloaderItem = [_pendingDownloadItems filteredArrayUsingPredicate:predicate][0];
+            [downloaderItem.downloadTask cancel];
             [_pendingDownloadItems removeObject:downloaderItem];
             [_delegate multiDownloadItem:downloaderItem downloadStatus:DownloadItemStatusCancelled];
         } else {
@@ -370,6 +377,7 @@
             if ([_resumeDownloadItems filteredArrayUsingPredicate:predicate].count > 0) {
                 
                 downloaderItem = [_resumeDownloadItems filteredArrayUsingPredicate:predicate][0];
+                [downloaderItem.downloadTask cancel];
                 [_resumeDownloadItems removeObject:downloaderItem];
                 [_delegate multiDownloadItem:downloaderItem downloadStatus:DownloadItemStatusCancelled];
             }

@@ -83,7 +83,6 @@
             _downloadButtonStatus = DownloadButtonStatusDownload;
             _taskStatusLabel.text = @"Ready";
             break;
-            
         case DownloadItemStatusStarted:
             
             [_downloadButton setEnabled:YES];
@@ -106,7 +105,6 @@
             _downloadButtonStatus = DownloadButtonStatusPause;
             _taskStatusLabel.text = @"Pending...";
             break;
-            
         case DownloadItemStatusPaused:
             
             [_downloadButton setEnabled:YES];
@@ -118,7 +116,6 @@
             _downloadButtonStatus = DownloadButtonStatusPlay;
             _taskStatusLabel.text = @"Paused";
             break;
-            
         case DownloadItemStatusCancelled:
             
             [_downloadButton setEnabled:YES];
@@ -130,7 +127,6 @@
             _downloadButtonStatus = DownloadButtonStatusDownload;
             _taskStatusLabel.text = @"Cancel";
             break;
-            
         case DownloadItemStatusCompleted:
             
             [_downloadButton setHidden:YES];
@@ -138,7 +134,6 @@
             [_progressView setHidden:YES];
             _taskStatusLabel.text = @"Completed";
             break;
-            
         case DownloadItemStatusError:
             
             [_downloadButton setEnabled:NO];
@@ -148,7 +143,6 @@
             _downloadButtonStatus = DownloadButtonStatusDownload;
             _taskStatusLabel.text = @"Error";
             break;
-            
         case DownloadItemStatusExisted:
             
             [_downloadButton setHidden:YES];
@@ -158,9 +152,28 @@
             _downloadButtonStatus = DownloadButtonStatusDownload;
             _taskStatusLabel.text = @"The Same links above";
             break;
+        case DownloadItemStatusInterrupted:
+            
+            [_downloadButton setEnabled:NO];
+            [_cancelButton setEnabled:NO];
+            [_progressView setHidden:YES];
+            [_downloadButton setImage:[UIImage imageNamed:@"ic_download"] forState:UIControlStateNormal];
+            _downloadButtonStatus = DownloadButtonStatusDownload;
+            _taskStatusLabel.text = @"DisConnected";
+            break;
         default:
             break;
     }
+}
+
+- (UIColor *)randomColor {
+    
+    CGFloat red = arc4random() % 255 / 255.0;
+    CGFloat green = arc4random() % 255 / 255.0;
+    CGFloat blue = arc4random() % 255 / 255.0;
+    UIColor* color = [UIColor colorWithRed:red green:green blue:blue alpha:0.8f];
+    NSLog(@"%@", color);
+    return color;
 }
 
 #pragma mark - setupLayout
@@ -171,7 +184,10 @@
     
     _progresssCellView = [[UIView alloc] init];
     _progresssCellView.layer.cornerRadius = 6;
-    [_progresssCellView setBackgroundColor:[UIColor whiteColor]];
+    _progresssCellView.layer.borderWidth = 0.5;
+    _progresssCellView.layer.borderColor = [UIColor whiteColor].CGColor;
+    _progresssCellView.alpha = 0.8;
+    [_progresssCellView setBackgroundColor:[self randomColor]];
     [self addSubview:_progresssCellView];
     [_progresssCellView mas_makeConstraints:^(MASConstraintMaker* make) {
         
@@ -182,26 +198,26 @@
     
     _taskNameLabel = [[UILabel alloc] init];
     _taskNameLabel.text = @"Task download name";
-    [_taskNameLabel setTextColor:[UIColor blueColor]];
+    [_taskNameLabel setTextColor:[UIColor whiteColor]];
     [_taskNameLabel setFont:[UIFont boldSystemFontOfSize:16 * scale]];
     [self addSubview:_taskNameLabel];
     
     _taskLinkLabel = [[UILabel alloc] init];
     _taskLinkLabel.text = @"http://download";
     [_taskLinkLabel setFont:[UIFont systemFontOfSize:13 * scale]];
-    [_taskLinkLabel setTextColor:[UIColor darkGrayColor]];
+    [_taskLinkLabel setTextColor:[UIColor whiteColor]];
     [_progresssCellView addSubview:_taskLinkLabel];
     
     _taskStatusLabel = [[UILabel alloc] init];
     _taskStatusLabel.text = @"Downloading...";
     [_taskStatusLabel setFont:[UIFont systemFontOfSize:10 * scale]];
-    [_taskStatusLabel setTextColor:[UIColor darkGrayColor]];
+    [_taskStatusLabel setTextColor:[UIColor whiteColor]];
     [_progresssCellView addSubview:_taskStatusLabel];
     
     _taskDetailLabel = [[UILabel alloc] init];
     _taskDetailLabel.text = @"0% - 30kb/24M - About 20 minute";
     [_taskDetailLabel setFont:[UIFont systemFontOfSize:9 * scale]];
-    [_taskDetailLabel setTextColor:[UIColor darkGrayColor]];
+    [_taskDetailLabel setTextColor:[UIColor whiteColor]];
     [_progresssCellView addSubview:_taskDetailLabel];
     
     _downloadButton = [[UIButton alloc] init];
@@ -237,6 +253,7 @@
         make.left.equalTo(_progresssCellView).offset(8);
         make.right.equalTo(_progresssCellView).offset(-8);
         make.bottom.equalTo(_progresssCellView).offset(-10);
+        make.height.mas_equalTo(3);
     }];
     
     [_taskStatusLabel mas_makeConstraints:^(MASConstraintMaker* make) {

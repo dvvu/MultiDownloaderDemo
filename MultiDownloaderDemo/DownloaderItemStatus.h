@@ -14,22 +14,12 @@
 #define FILE_URL5 @"http://spaceflight.nasa.gov/gallery/images/apollo/apollo17/hires/as17-134-20380.jpg"
 #define FILE_URL6 @"http://cdn.tutsplus.com/mobile/uploads/2013/12/sample.jpg"
 
-//    if UIScreen.mainScreen().bounds.size.height == 480 {
-//        // iPhone 4 height == 480
-//        label.font = label.font.fontWithSize(20)
-//    } else if UIScreen.mainScreen().bounds.size.height == 568 {
-//        // IPhone 5 height == 568
-//        label.font = label.font.fontWithSize(20)
-//    } else if UIScreen.mainScreen().bounds.size.width == 375 {
-//        // iPhone 6 width == 375
-//        label.font = label.font.fontWithSize(20)
-//    } else if UIScreen.mainScreen().bounds.size.width == 414 {
-//        // iPhone 6+ width == 414
-//        label.font = label.font.fontWithSize(20)
-//    } else if UIScreen.mainScreen().bounds.size.width == 768 {
-//        // iPad
-//        label.font = label.font.fontWithSize(20)
-//    }
+/*
+     iPhone 4 320x480
+     IPhone 5 320x568
+     iPhone 6 375x667
+     iPhone 6+ 414x736
+*/
 
 #define FONTSIZE_SCALE [[UIScreen mainScreen] bounds].size.height == 480 ? 1 : ([[UIScreen mainScreen] bounds].size.height == 568 ? 1.12 : ([[UIScreen mainScreen] bounds].size.width == 375 ? 1.21 : ([[UIScreen mainScreen] bounds].size.width == 414 ? 1.23 : 1.23)))
 

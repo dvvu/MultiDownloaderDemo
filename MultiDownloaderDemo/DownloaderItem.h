@@ -50,4 +50,7 @@
 #pragma mark - identifier
 @property (nonatomic) NSString* identifier;
 
+#pragma mark - identifier
+@property (nonatomic) BOOL isActiveDownload;
+
 @end
