@@ -6,7 +6,7 @@
 //  Copyright © 2017 Doan Van Vu. All rights reserved.
 //
 
-#import "MultiDownloadManager.h"
+#import "MultiDownloaderManager.h"
 #import "AppDelegate.h"
 
 @interface AppDelegate ()
@@ -23,7 +23,7 @@
 
 - (void)application:(UIApplication *)application handleEventsForBackgroundURLSession:(NSString *)identifier completionHandler:(void (^)())completionHandler {
     
-    [MultiDownloadManager sharedManager].backgroundTransferCompletionHandler = completionHandler;
+    [MultiDownloaderManager sharedManager].backgroundTransferCompletionHandler = completionHandler;
 }
 
 - (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {

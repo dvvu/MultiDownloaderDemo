@@ -8,21 +8,22 @@
 
 #import <SystemConfiguration/SystemConfiguration.h>
 #import "MultiDownloaderViewController.h"
-#import "ProgressTableViewCellObject.h"
+#import "DownloaderTableViewCellObject.h"
 #import "ThreadSafeForMutableArray.h"
-#import "MultiDownloadItemDelegate.h"
+#import "MultiDownloaderItemDelegate.h"
 #import "NIMutableTableViewModel.h"
-#import "MultiDownloadManager.h"
-#import "ProgressTableViewCell.h"
+#import "MultiDownloaderManager.h"
+#import "DownloaderTableViewCell.h"
 #import "DownloaderItemStatus.h"
+#import "ViewController.h"
 #import "Masonry.h"
 
-@interface MultiDownloaderViewController () <MultiDownloadItemDelegate, NITableViewModelDelegate, MultiDownloadCellActionDelegate, UITableViewDelegate>
+@interface MultiDownloaderViewController () <MultiDownloaderItemDelegate, NITableViewModelDelegate, MultiDownloaderCellActionDelegate, UITableViewDelegate>
 
 @property (weak, nonatomic) IBOutlet UIBarButtonItem* connectionStatusButton;
 @property (nonatomic) dispatch_queue_t multiDownloadItemsQueue;
 @property (nonatomic) ThreadSafeForMutableArray* canDownLinks;
-@property (nonatomic) MultiDownloadManager* downloadTasks;
+@property (nonatomic) MultiDownloaderManager* downloadTasks;
 @property (nonatomic) NSMutableArray* validDownloadLinks;
 @property (nonatomic) ConnectionType connectionType;
 @property (nonatomic) int maxCurrentDownloadTasks;
@@ -68,10 +69,12 @@
             
             _maxCurrentDownloadTasks = 0;
             [_connectionStatusButton setTitle:@"DISCONNECT"];
+            [ViewController showConnectInternetAlert:self withTitle:@"DisConnected" andMessage:@"Please check The internet and try again!"];
             break;
         default:
             break;
     }
+    
     [_tableView mas_makeConstraints:^(MASConstraintMaker* make) {
         
         make.top.equalTo(self.view).offset(0);
@@ -89,17 +92,17 @@
     
     dispatch_async(_multiDownloadItemsQueue, ^ {
         
-        _downloadLinks = @[FILE_URL,FILE_URL1,FILE_URL2,FILE_URL3,FILE_URL4,FILE_URL5,FILE_URL6,FILE_URL6,FILE_URL6,FILE_URL6,FILE_URL6,FILE_URL6,FILE_URL6,FILE_URL6,FILE_URL6,FILE_URL6,FILE_URL6];
+        _downloadLinks = @[FILE_URL,FILE_URL1,FILE_URL2,FILE_URL3,FILE_URL4,FILE_URL5,FILE_URL6];
         _canDownLinks = [[ThreadSafeForMutableArray alloc] init];
         _validDownloadLinks = [NSMutableArray array];
-        _downloadTasks = [[MultiDownloadManager sharedManager] initBackgroundDownloadWithId:@"com.vn.vng.zalo.download" currentDownloadMaximum:_maxCurrentDownloadTasks delegate:self delegateQueue:[NSOperationQueue mainQueue]];
+        _downloadTasks = [[MultiDownloaderManager sharedManager] initBackgroundDownloadWithId:@"com.vn.vng.zalo.download" currentDownloadMaximum:_maxCurrentDownloadTasks delegate:self delegateQueue:[NSOperationQueue mainQueue]];
         
         NSMutableArray* objects = [NSMutableArray array];
         NSMutableDictionary* objectsDict = [[NSMutableDictionary alloc] init];
         
         for (int i = 0; i < _downloadLinks.count; i++) {
             
-            ProgressTableViewCellObject* cellObject = [[ProgressTableViewCellObject alloc] init];
+            DownloaderTableViewCellObject* cellObject = [[DownloaderTableViewCellObject alloc] init];
             NSURL* url = [NSURL URLWithString:_downloadLinks[i]];
             cellObject.taskName = [url lastPathComponent];
             cellObject.taskUrl = url;
@@ -119,7 +122,7 @@
             
             NSPredicate* predicate = [NSPredicate predicateWithFormat:@"SELF CONTAINS[cd] %@", _downloadLinks[i]];
             
-            if([_validDownloadLinks filteredArrayUsingPredicate:predicate].count > 0) {
+            if ([_validDownloadLinks filteredArrayUsingPredicate:predicate].count > 0) {
                 
                 cellObject.taskStatus = DownloadItemStatusExisted;
                 cellObject.taskUrl = [NSURL URLWithString:@"http://downloadTheSameURL"];
@@ -176,11 +179,11 @@
 
 - (void)startDownloadFromURL:(NSURL *)sourceURL {
     
-    ProgressTableViewCellObject* cellObject = _cellObjects[sourceURL];
+    DownloaderTableViewCellObject* cellObject = _cellObjects[sourceURL];
     cellObject.identifier = [_downloadTasks startDownloadFromURL:sourceURL];
     cellObject.taskStatus = DownloadItemStatusPending;
     NSIndexPath* indexPath = [_model indexPathForObject:cellObject];
-    ProgressTableViewCell* cell = [_tableView cellForRowAtIndexPath:indexPath];
+    DownloaderTableViewCell* cell = [_tableView cellForRowAtIndexPath:indexPath];
     
     dispatch_async(dispatch_get_main_queue(), ^ {
         
@@ -211,13 +214,13 @@
 
 #pragma mark - MultiDownloadItem
 
-- (void)multiDownloadItem:(DownloaderItem *)downloaderItem didWriteData:(int64_t)bytesWritten totalBytesWritten:(int64_t)totalBytesWritten totalBytesExpectedToWrite:(int64_t)totalBytesExpectedToWrite {
+- (void)multiDownloaderItem:(DownloaderItem *)downloaderItem didWriteData:(int64_t)bytesWritten totalBytesWritten:(int64_t)totalBytesWritten totalBytesExpectedToWrite:(int64_t)totalBytesExpectedToWrite {
     
     CGFloat progress = (CGFloat)totalBytesWritten / (CGFloat)totalBytesExpectedToWrite;
-    ProgressTableViewCellObject* cellObject = _cellObjects[downloaderItem.sourceURL];
+    DownloaderTableViewCellObject* cellObject = _cellObjects[downloaderItem.sourceURL];
     
     NSIndexPath* indexPath = [_model indexPathForObject:cellObject];
-    ProgressTableViewCell* cell = [_tableView cellForRowAtIndexPath:indexPath];
+    DownloaderTableViewCell* cell = [_tableView cellForRowAtIndexPath:indexPath];
    
     CGFloat second = [self remainingTimeForDownload:downloaderItem bytesTransferred:totalBytesWritten totalBytesExpectedToWrite:totalBytesExpectedToWrite];
     NSString* formatByteWritten = [NSByteCountFormatter stringFromByteCount:totalBytesWritten countStyle:NSByteCountFormatterCountStyleFile];
@@ -235,11 +238,11 @@
 
 #pragma mark - MultiDownloadItem
 
-- (void)multiDownloadItem:(DownloaderItem *)downloaderItem didFinishDownloadFromURL:(NSURL *)destURL withError:(NSError *)error {
+- (void)multiDownloaderItem:(DownloaderItem *)downloaderItem didFinishDownloadFromURL:(NSURL *)destURL withError:(NSError *)error {
    
-    ProgressTableViewCellObject* cellObject = _cellObjects[downloaderItem.sourceURL];
+    DownloaderTableViewCellObject* cellObject = _cellObjects[downloaderItem.sourceURL];
     NSIndexPath* indexPath = [_model indexPathForObject:cellObject];
-    ProgressTableViewCell* cell = [_tableView cellForRowAtIndexPath:indexPath];
+    DownloaderTableViewCell* cell = [_tableView cellForRowAtIndexPath:indexPath];
     
     if (downloaderItem.downloadItemStatus == DownloadItemStatusCompleted) {
         
@@ -255,11 +258,11 @@
 
 #pragma mark - MultiDownloadItem
 
-- (void)multiDownloadItem:(DownloaderItem *)downloaderItem downloadStatus:(DownloaderItemStatus)status {
+- (void)multiDownloaderItem:(DownloaderItem *)downloaderItem downloadStatus:(DownloaderItemStatus)status {
     
-    ProgressTableViewCellObject* cellObject = _cellObjects[downloaderItem.sourceURL];
+    DownloaderTableViewCellObject* cellObject = _cellObjects[downloaderItem.sourceURL];
     NSIndexPath* indexPath = [_model indexPathForObject:cellObject];
-    ProgressTableViewCell* cell = [_tableView cellForRowAtIndexPath:indexPath];
+    DownloaderTableViewCell* cell = [_tableView cellForRowAtIndexPath:indexPath];
     
     if (status == DownloadItemStatusPaused) {
 

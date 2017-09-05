@@ -1,16 +1,16 @@
 //
-//  MultiDownloadManager.h
+//  MultiDownloaderManager.h
 //  MultiDownloaderDemo
 //
-//  Created by Doan Van Vu on 8/25/17.
+//  Created by Doan Van Vu on 9/5/17.
 //  Copyright © 2017 Doan Van Vu. All rights reserved.
 //
 
-#import "MultiDownloadItemDelegate.h"
+#import "MultiDownloaderItemDelegate.h"
 #import <Foundation/Foundation.h>
 #import "DownloaderItem.h"
 
-@interface MultiDownloadManager : NSObject
+@interface MultiDownloaderManager : NSObject
 
 #pragma mark - singleton
 + (instancetype)sharedManager;
@@ -19,13 +19,13 @@
 @property (nonatomic) void(^backgroundTransferCompletionHandler)();
 
 #pragma mark - MultiDownloadItemDelegate
-@property (nonatomic) id<MultiDownloadItemDelegate> delegate;
+@property (nonatomic) id<MultiDownloaderItemDelegate> delegate;
 
 #pragma mark - initBackgroundDownloadWithId
-- (instancetype)initBackgroundDownloadWithId:(NSString *)identifier currentDownloadMaximum:(int)currentDownloadMaximum delegate:(id<MultiDownloadItemDelegate>) delegate delegateQueue:(NSOperationQueue *)queue;
+- (instancetype)initBackgroundDownloadWithId:(NSString *)identifier currentDownloadMaximum:(int)currentDownloadMaximum delegate:(id<MultiDownloaderItemDelegate>) delegate delegateQueue:(NSOperationQueue *)queue;
 
 #pragma mark - initDefaultDownloadWithDelegate
-- (instancetype)initDefaultDownloadWithDelegate:(int)currentDownloadMaximum delegate:(id<MultiDownloadItemDelegate>)delegate delegateQueue:(NSOperationQueue *)queue;
+- (instancetype)initDefaultDownloadWithDelegate:(int)currentDownloadMaximum delegate:(id<MultiDownloaderItemDelegate>)delegate delegateQueue:(NSOperationQueue *)queue;
 
 #pragma mark - startDownloadFromURL
 - (NSString *)startDownloadFromURL:(NSURL *)sourceURL;

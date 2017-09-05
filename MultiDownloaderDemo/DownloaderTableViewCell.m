@@ -1,22 +1,22 @@
 //
-//  ProgressTableViewCell.m
+//  DownloaderTableViewCell.m
 //  MultiDownloaderDemo
 //
-//  Created by Doan Van Vu on 8/25/17.
+//  Created by Doan Van Vu on 9/5/17.
 //  Copyright © 2017 Doan Van Vu. All rights reserved.
 //
 
-#import "ProgressTableViewCellObject.h"
-#import "ProgressTableViewCell.h"
+#import "DownloaderTableViewCell.h"
+#import "DownloaderTableViewCellObject.h"
 #import "Masonry.h"
 
-@interface ProgressTableViewCell ()
+@interface DownloaderTableViewCell ()
 
 @property (nonatomic) DownloadButtonStatus downloadButtonStatus;
 @property (nonatomic) UIView* progresssCellView;
 @end
 
-@implementation ProgressTableViewCell
+@implementation DownloaderTableViewCell
 
 #pragma mark - init TableCell
 
@@ -34,9 +34,9 @@
 
 #pragma mark - delegate oif NICell -> change when something is changed in cell
 
-- (BOOL)shouldUpdateCellWithObject:(id<ProgressTableViewCellObjectProtocol>)object {
+- (BOOL)shouldUpdateCellWithObject:(id<DownloaderTableViewCellObjectProtocol>)object {
     
-    ProgressTableViewCellObject* cellObject = (ProgressTableViewCellObject *)object;
+    DownloaderTableViewCellObject* cellObject = (DownloaderTableViewCellObject *)object;
     
     _link = cellObject.taskUrl;
     _delegate = cellObject.delegate;
@@ -46,12 +46,12 @@
     _taskLinkLabel.text = [cellObject.taskUrl absoluteString];
     _identifier = cellObject.identifier;
     [self statusDownloader: cellObject.taskStatus];
-
+    
     return YES;
 }
 
-- (void)setModel:(id<ProgressTableViewCellObjectProtocol>)model {
-  
+- (void)setModel:(id<DownloaderTableViewCellObjectProtocol>)model {
+    
     _model = model;
     _identifier = _model.identifier;
     [self updateProgress:_model.process withInfo:_model.taskDetail];
@@ -60,7 +60,7 @@
 #pragma mark - updateProcess
 
 - (void)updateProgress:(CGFloat)progress withInfo:(NSString *)detail {
-
+    
     _progressView.progress = progress;
     _taskDetailLabel.text = detail;
     [self statusDownloader:_model.taskStatus];

@@ -1,20 +1,20 @@
 //
-//  ProgressTableViewCellObject.h
-//  NetWorking
+//  DownloaderTableViewCellObject.h
+//  MultiDownloaderDemo
 //
-//  Created by Doan Van Vu on 8/24/17.
+//  Created by Doan Van Vu on 9/5/17.
 //  Copyright © 2017 Doan Van Vu. All rights reserved.
 //
 
-#import "MultiDownloadCellActionDelegate.h"
+#import "MultiDownloaderCellActionDelegate.h"
 #import <Foundation/Foundation.h>
 #import "DownloaderItemStatus.h"
 #import "NICellCatalog.h"
 #import <UIKit/UIKit.h>
 
-@protocol ProgressTableViewCellObjectProtocol <NSObject>
+@protocol DownloaderTableViewCellObjectProtocol <NSObject>
 
-@property (nonatomic) id<MultiDownloadCellActionDelegate> delegate;
+@property (nonatomic) id<MultiDownloaderCellActionDelegate> delegate;
 @property (readonly, nonatomic, copy) NSString* identifier;
 @property (readonly, nonatomic, copy) NSString* taskDetail;
 @property (readonly, nonatomic, copy) NSString* taskName;
@@ -24,9 +24,9 @@
 
 @end
 
-@interface ProgressTableViewCellObject : NITitleCellObject <ProgressTableViewCellObjectProtocol>
+@interface DownloaderTableViewCellObject : NITitleCellObject <DownloaderTableViewCellObjectProtocol>
 
-@property (nonatomic) id<MultiDownloadCellActionDelegate> delegate;
+@property (nonatomic) id<MultiDownloaderCellActionDelegate> delegate;
 @property (nonatomic) DownloaderItemStatus taskStatus;
 @property (nonatomic, copy) NSString* identifier;
 @property (nonatomic, copy) NSString* taskDetail;

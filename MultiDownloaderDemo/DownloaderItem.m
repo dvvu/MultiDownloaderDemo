@@ -24,8 +24,8 @@
         
         _receivedFileSizeInBytes = 0;
         _expectedFileSizeInBytes = 0;
-        _resumedFileSizeInBytes  = 0;
-        _bytesPerSecondSpeed     = 0;
+        _resumedFileSizeInBytes = 0;
+        _bytesPerSecondSpeed = 0;
         _downloadItemStatus = DownloadItemStatusNotStarted;
         _downloadTask = downloadTask;
         _directoryName = @"";
