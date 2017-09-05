@@ -161,10 +161,21 @@
             _downloadButtonStatus = DownloadButtonStatusDownload;
             _taskStatusLabel.text = @"DisConnected";
             break;
+        case DownloadItemStatusTimeOut:
+            
+            [_downloadButton setEnabled:YES];
+            [_cancelButton setEnabled:NO];
+            [_progressView setHidden:YES];
+            [_downloadButton setImage:[UIImage imageNamed:@"ic_download"] forState:UIControlStateNormal];
+            _downloadButtonStatus = DownloadButtonStatusDownload;
+            _taskStatusLabel.text = @"Timeout";
+            break;
         default:
             break;
     }
 }
+
+#pragma mark - randomColor
 
 - (UIColor *)randomColor {
     
@@ -172,11 +183,10 @@
     CGFloat green = arc4random() % 255 / 255.0;
     CGFloat blue = arc4random() % 255 / 255.0;
     UIColor* color = [UIColor colorWithRed:red green:green blue:blue alpha:0.8f];
-    NSLog(@"%@", color);
     return color;
 }
 
-#pragma mark - setupLayout
+#pragma mark - setupLayoutForCell
 
 - (void)setupLayoutForCell {
     
@@ -227,7 +237,7 @@
     [_progresssCellView addSubview:_downloadButton];
     
     _cancelButton = [[UIButton alloc] init];
-    [_cancelButton addTarget:self action:@selector(stopAction:) forControlEvents:UIControlEventTouchUpInside];
+    [_cancelButton addTarget:self action:@selector(cancelAction:) forControlEvents:UIControlEventTouchUpInside];
     [_cancelButton setImage:[UIImage imageNamed:@"ic_stop"] forState:UIControlStateNormal];
     [_progresssCellView addSubview:_cancelButton];
     
@@ -310,7 +320,7 @@
 
 #pragma mark - cancelAction
 
-- (void)stopAction:(UIButton *)sender {
+- (void)cancelAction:(UIButton *)sender {
     
     if (_delegate && [_delegate respondsToSelector:@selector(startDownloadFromURL:)]) {
         

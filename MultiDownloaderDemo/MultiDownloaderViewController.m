@@ -69,7 +69,7 @@
             
             _maxCurrentDownloadTasks = 0;
             [_connectionStatusButton setTitle:@"DISCONNECT"];
-            [ViewController showConnectInternetAlert:self withTitle:@"DisConnected" andMessage:@"Please check The internet and try again!"];
+            [ViewController showConnectInternetAlert:self withTitle:@"DISCONNECTED" andMessage:@"Please check The internet and try again!"];
             break;
         default:
             break;
@@ -96,6 +96,8 @@
         _canDownLinks = [[ThreadSafeForMutableArray alloc] init];
         _validDownloadLinks = [NSMutableArray array];
         _downloadTasks = [[MultiDownloaderManager sharedManager] initBackgroundDownloadWithId:@"com.vn.vng.zalo.download" currentDownloadMaximum:_maxCurrentDownloadTasks delegate:self delegateQueue:[NSOperationQueue mainQueue]];
+        
+//        _downloadTasks = [[MultiDownloaderManager sharedManager] initDefaultDownloadWithDelegate:_maxCurrentDownloadTasks delegate:self delegateQueue:nil];// 12s timeout
         
         NSMutableArray* objects = [NSMutableArray array];
         NSMutableDictionary* objectsDict = [[NSMutableDictionary alloc] init];
@@ -293,6 +295,14 @@
     } else if (status == DownloadItemStatusStarted) {
         
         cellObject.taskStatus = DownloadItemStatusStarted;
+        dispatch_async(dispatch_get_main_queue(), ^ {
+            
+            [cell setModel:cellObject];
+        });
+    }else if (status == DownloadItemStatusTimeOut) {
+        
+        cellObject.taskStatus = DownloadItemStatusTimeOut;
+        cellObject.taskDetail = @"";
         dispatch_async(dispatch_get_main_queue(), ^ {
             
             [cell setModel:cellObject];

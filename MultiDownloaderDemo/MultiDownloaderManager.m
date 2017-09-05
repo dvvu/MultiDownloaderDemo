@@ -65,6 +65,7 @@
     dispatch_once(&onceToken, ^{
         
         NSURLSessionConfiguration* configurationDefault = [NSURLSessionConfiguration defaultSessionConfiguration];
+        configurationDefault.timeoutIntervalForRequest = 12;
         _downloadSession = [NSURLSession sessionWithConfiguration:configurationDefault delegate:self delegateQueue:queue];
         _delegate = delegate;
         _currentDownloadMaximum = currentDownloadMaximum;
@@ -176,11 +177,10 @@
     if (_delegate && [_delegate respondsToSelector:@selector(multiDownloaderItem:didWriteData:totalBytesWritten:totalBytesExpectedToWrite:)]) {
         
         DownloaderItem* downloaderItem = [_currentActiveDownloadItems getObjectForKey:identifier];
-        
+        downloaderItem.isActiveDownload = YES;
         // check case delay when click suspend.
         NSLog(@"current %lu - pending %lu",(unsigned long)_currentActiveDownloadItems.count, (unsigned long)_pendingDownloadItems.count);
-        downloaderItem.isActiveDownload = YES;
-        
+        NSLog(@"--%ld",(long)downloadTask.state);
         if (downloaderItem.downloadItemStatus == DownloadItemStatusNotStarted) {
             
             downloaderItem.downloadItemStatus = DownloadItemStatusStarted;
@@ -199,26 +199,48 @@
         return;
     }
     
-    switch ([error code]) {
+    NSString* identifier = [NSString stringWithFormat:@"%lud",(unsigned long)[downloadTask taskIdentifier]];
+    
+    if (identifier) {
+        
+        DownloaderItem* downloaderItem = [_currentActiveDownloadItems getObjectForKey:identifier];
+        
+        if (!downloaderItem) {
             
-        case NSURLErrorCancelled:
+            NSPredicate* predicate = [NSPredicate predicateWithFormat:@"identifier contains[cd] %@", identifier];
             
-            NSLog(@"FinishDownload - Error: %@",[error debugDescription]);
-            break;
-        case kCFHostErrorUnknown:
-            
-            // Could not found directory to save file
-            break;
-        case NSURLErrorNotConnectedToInternet:
-            
-            // Cannot connect to the internet
-            break;
-        case NSURLErrorTimedOut:
-            
-            // Time out connection
-            break;
-        default:
-            break;
+            if ([_resumeDownloadItems filteredArrayUsingPredicate:predicate].count > 0) {
+                
+                downloaderItem = [_resumeDownloadItems filteredArrayUsingPredicate:predicate][0];
+                [_resumeDownloadItems removeObject:downloaderItem];
+            }
+        }
+        
+        switch ([error code]) {
+                
+            case NSURLErrorCancelled:
+                
+                NSLog(@"NSURLErrorCancelled");
+                break;
+            case kCFHostErrorUnknown:
+                
+                // Could not found directory to save file
+                NSLog(@"kCFHostErrorUnknown");
+                break;
+            case NSURLErrorNotConnectedToInternet:
+                
+                // Cannot connect to the internet
+                NSLog(@"NSURLErrorNotConnectedToInternet");
+                break;
+            case NSURLErrorTimedOut:
+                
+                // Time out connection
+                NSLog(@"NSURLErrorTimedOut");
+                [_delegate multiDownloaderItem:downloaderItem downloadStatus:DownloadItemStatusTimeOut];
+                break;
+            default:
+                break;
+        }
     }
 }
 
@@ -256,7 +278,7 @@
     
     DownloaderItem* downloaderItem = [_currentActiveDownloadItems getObjectForKey:identifier];
     
-    if (downloaderItem) {
+    if (downloaderItem && downloaderItem.isActiveDownload) {
         
         // pause currentTask running
         downloaderItem.downloadItemStatus = DownloadItemStatusPaused;

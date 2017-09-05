@@ -35,7 +35,8 @@ typedef NS_ENUM(NSUInteger, DownloaderItemStatus) {
     DownloadItemStatusInterrupted,
     DownloadItemStatusExisted,
     DownloadItemStatusPending,
-    DownloadItemStatusError
+    DownloadItemStatusError,
+    DownloadItemStatusTimeOut
 };
 
 #pragma mark - DownloadButtonStatus
