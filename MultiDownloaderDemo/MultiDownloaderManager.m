@@ -47,6 +47,7 @@
     dispatch_once(&onceToken, ^{
         
         NSURLSessionConfiguration* configuration = [NSURLSessionConfiguration backgroundSessionConfigurationWithIdentifier:identifier];
+        configuration.discretionary = NO;
         _downloadSession = [NSURLSession sessionWithConfiguration:configuration delegate:self delegateQueue:queue];
         _delegate = delegate;
         _currentDownloadMaximum = currentDownloadMaximum;
@@ -177,10 +178,29 @@
     if (_delegate && [_delegate respondsToSelector:@selector(multiDownloaderItem:didWriteData:totalBytesWritten:totalBytesExpectedToWrite:)]) {
         
         DownloaderItem* downloaderItem = [_currentActiveDownloadItems getObjectForKey:identifier];
-        downloaderItem.isActiveDownload = YES;
+
         // check case delay when click suspend.
         NSLog(@"current %lu - pending %lu",(unsigned long)_currentActiveDownloadItems.count, (unsigned long)_pendingDownloadItems.count);
-        NSLog(@"--%ld",(long)downloadTask.state);
+        
+        if (downloadTask.state == 1) {
+            
+            if (!downloaderItem) {
+                
+                NSPredicate* predicate = [NSPredicate predicateWithFormat:@"identifier contains[cd] %@", identifier];
+                
+                if ([_resumeDownloadItems filteredArrayUsingPredicate:predicate].count > 0) {
+                    
+                    downloaderItem = [_resumeDownloadItems filteredArrayUsingPredicate:predicate][0];
+                    [_resumeDownloadItems removeObject:downloaderItem];
+                }
+            }
+            // can't pause
+            NSLog(@"--%ld",(long)downloadTask.state);
+            downloaderItem.downloadItemStatus = DownloadItemStatusStarted;
+            [downloadTask resume];
+            [_currentActiveDownloadItems setObject:downloaderItem forKey:identifier];
+        }
+        
         if (downloaderItem.downloadItemStatus == DownloadItemStatusNotStarted) {
             
             downloaderItem.downloadItemStatus = DownloadItemStatusStarted;
@@ -214,6 +234,9 @@
                 downloaderItem = [_resumeDownloadItems filteredArrayUsingPredicate:predicate][0];
                 [_resumeDownloadItems removeObject:downloaderItem];
             }
+        } else {
+            
+            [_currentActiveDownloadItems removeObjectForkey:identifier];
         }
         
         switch ([error code]) {
@@ -237,6 +260,12 @@
                 // Time out connection
                 NSLog(@"NSURLErrorTimedOut");
                 [_delegate multiDownloaderItem:downloaderItem downloadStatus:DownloadItemStatusTimeOut];
+                break;
+            case NSURLErrorNetworkConnectionLost:
+                
+                // NSURLErrorNetworkConnectionLost
+                NSLog(@"NSURLErrorNetworkConnectionLost");
+                [_delegate multiDownloaderItem:downloaderItem downloadStatus:DownloadItemStatusInterrupted];
                 break;
             default:
                 break;
@@ -277,8 +306,8 @@
 - (void)pauseDownloadWithItemID:(NSString *)identifier {
     
     DownloaderItem* downloaderItem = [_currentActiveDownloadItems getObjectForKey:identifier];
-    
-    if (downloaderItem && downloaderItem.isActiveDownload) {
+    NSLog(@"%ld",downloaderItem.downloadTask.state);
+    if (downloaderItem) {
         
         // pause currentTask running
         downloaderItem.downloadItemStatus = DownloadItemStatusPaused;

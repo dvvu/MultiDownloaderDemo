@@ -22,13 +22,11 @@
 
 @property (weak, nonatomic) IBOutlet UIBarButtonItem* connectionStatusButton;
 @property (nonatomic) dispatch_queue_t multiDownloadItemsQueue;
-@property (nonatomic) ThreadSafeForMutableArray* canDownLinks;
 @property (nonatomic) MultiDownloaderManager* downloadTasks;
 @property (nonatomic) NSMutableArray* validDownloadLinks;
 @property (nonatomic) ConnectionType connectionType;
 @property (nonatomic) int maxCurrentDownloadTasks;
 @property (nonatomic) NSDictionary* cellObjects;
-@property (nonatomic) BOOL isEnableMaxDownload;
 @property (nonatomic) NITableViewModel* model;
 @property (nonatomic) UITableView* tableView;
 @property (nonatomic) NSArray* downloadLinks;
@@ -40,6 +38,7 @@
 - (void)viewDidLoad {
     
     [super viewDidLoad];
+    [self connection];
     
     _tableView = [[UITableView alloc]init];
     _tableView.delegate = self;
@@ -48,8 +47,24 @@
     [_tableView setBackgroundColor:[UIColor colorWithRed:48/255.f green:22/255.f blue:49/255.f alpha:1.0f]];
     [self.view addSubview:_tableView];
     
+    [_tableView mas_makeConstraints:^(MASConstraintMaker* make) {
+        
+        make.top.equalTo(self.view).offset(0);
+        make.left.equalTo(self.view).offset(0);
+        make.bottom.equalTo(self.view).offset(0);
+        make.right.equalTo(self.view).offset(0);
+    }];
+    
+    
+    [self setupData];
+}
+
+#pragma mark - connection
+
+- (void)connection {
+    
     _connectionType = [MultiDownloaderViewController checkConnectionNetWork];
-   
+    
     switch (_connectionType) {
             
         case ConnectionTypeUnknown:
@@ -74,16 +89,6 @@
         default:
             break;
     }
-    
-    [_tableView mas_makeConstraints:^(MASConstraintMaker* make) {
-        
-        make.top.equalTo(self.view).offset(0);
-        make.left.equalTo(self.view).offset(0);
-        make.bottom.equalTo(self.view).offset(0);
-        make.right.equalTo(self.view).offset(0);
-    }];
-    
-    [self setupData];
 }
 
 #pragma mark - setupData
@@ -92,12 +97,9 @@
     
     dispatch_async(_multiDownloadItemsQueue, ^ {
         
-        _downloadLinks = @[FILE_URL,FILE_URL1,FILE_URL2,FILE_URL3,FILE_URL4,FILE_URL5,FILE_URL6];
-        _canDownLinks = [[ThreadSafeForMutableArray alloc] init];
+        _downloadLinks = @[FILE_URL,FILE_URL1,FILE_URL2,FILE_URL3,FILE_URL4,FILE_URL5,FILE_URL6,FILE_URL7];
         _validDownloadLinks = [NSMutableArray array];
         _downloadTasks = [[MultiDownloaderManager sharedManager] initBackgroundDownloadWithId:@"com.vn.vng.zalo.download" currentDownloadMaximum:_maxCurrentDownloadTasks delegate:self delegateQueue:[NSOperationQueue mainQueue]];
-        
-//        _downloadTasks = [[MultiDownloaderManager sharedManager] initDefaultDownloadWithDelegate:_maxCurrentDownloadTasks delegate:self delegateQueue:nil];// 12s timeout
         
         NSMutableArray* objects = [NSMutableArray array];
         NSMutableDictionary* objectsDict = [[NSMutableDictionary alloc] init];
@@ -127,18 +129,13 @@
             if ([_validDownloadLinks filteredArrayUsingPredicate:predicate].count > 0) {
                 
                 cellObject.taskStatus = DownloadItemStatusExisted;
-                cellObject.taskUrl = [NSURL URLWithString:@"http://downloadTheSameURL"];
+                cellObject.taskUrl = [NSURL URLWithString:@""];
             } else {
                 
                 [_validDownloadLinks addObject:_downloadLinks[i]];
             }
 
             [objects addObject:cellObject];
-            
-            if (cellObject.taskStatus == DownloadItemStatusNotStarted) {
-                
-                [_canDownLinks addObject:url];
-            }
             objectsDict[cellObject.taskUrl] = cellObject;
         }
         
@@ -299,9 +296,17 @@
             
             [cell setModel:cellObject];
         });
-    }else if (status == DownloadItemStatusTimeOut) {
+    } else if (status == DownloadItemStatusTimeOut) {
         
         cellObject.taskStatus = DownloadItemStatusTimeOut;
+        cellObject.taskDetail = @"";
+        dispatch_async(dispatch_get_main_queue(), ^ {
+            
+            [cell setModel:cellObject];
+        });
+    } else if (status == DownloadItemStatusInterrupted) {
+        
+        cellObject.taskStatus = DownloadItemStatusInterrupted;
         cellObject.taskDetail = @"";
         dispatch_async(dispatch_get_main_queue(), ^ {
             

@@ -159,7 +159,7 @@
             [_progressView setHidden:YES];
             [_downloadButton setImage:[UIImage imageNamed:@"ic_download"] forState:UIControlStateNormal];
             _downloadButtonStatus = DownloadButtonStatusDownload;
-            _taskStatusLabel.text = @"DisConnected";
+            _taskStatusLabel.text = @"Disconnected";
             break;
         case DownloadItemStatusTimeOut:
             

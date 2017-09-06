@@ -13,7 +13,7 @@
 #define FILE_URL4 @"http://spaceflight.nasa.gov/gallery/images/apollo-soyuz/apollo-soyuz/hires/s75-33375.jpg"
 #define FILE_URL5 @"http://spaceflight.nasa.gov/gallery/images/apollo/apollo17/hires/as17-134-20380.jpg"
 #define FILE_URL6 @"http://cdn.tutsplus.com/mobile/uploads/2013/12/sample.jpg"
-
+#define FILE_URL7 @"https://www.fshare.vn/file/J89BIF9QP42O"
 /*
      iPhone 4 320x480
      IPhone 5 320x568
@@ -36,7 +36,7 @@ typedef NS_ENUM(NSUInteger, DownloaderItemStatus) {
     DownloadItemStatusExisted,
     DownloadItemStatusPending,
     DownloadItemStatusError,
-    DownloadItemStatusTimeOut
+    DownloadItemStatusTimeOut,
 };
 
 #pragma mark - DownloadButtonStatus

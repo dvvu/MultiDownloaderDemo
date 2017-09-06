@@ -58,5 +58,13 @@
     // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
 }
 
+- (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo {
+   
+    if (application.applicationState == UIApplicationStateInactive) {
+    
+        NSLog(@"UIApplicationStateInactive");
+    }
+}
+
 
 @end
